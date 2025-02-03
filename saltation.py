@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from scipy.optimize import fsolve
 
 ########################### Global Variables ###########################
 
@@ -15,6 +16,7 @@ nu = 11.19                  # cm^2 / s
 
 ########################### Helper Functions ###########################
 
+# Wind as a Geological Process, Greeley & Iversen, 1985, pg 81
 def A_func(D, U):
     B = U * D / nu
     K = 0.006               # g cm^0.5 / s^2
@@ -46,6 +48,24 @@ def plot_contour(d, u):
     ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     plt.show()
+
+def find_threshold_speeds(diameters: torch.Tensor):
+    speeds = torch.zeros_like(diameters)
+    for i, d in enumerate(diameters.tolist()):
+        func = lambda u : A_minus_A_func(d, u)
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fsolve.html
+        speeds[i] = fsolve(func, 5)
+    return speeds
+
+# Pankine and Ingersoll, Interannual Variability of Martian Global Dust Storms, 2002
+def generate_flux_tensor(s0, particle_diameters, u_freestream):
+    D, U_fs = torch.meshgrid(particle_diameters, u_freestream, indexing="ij")
+    U_threshold = find_threshold_speeds(D)
+    Cf = 0
+    U_friction = U_fs * Cf
+    R = U_threshold / U_friction # need to build in minimum
+    G = s0 * U_friction**3 * (1 - R) * (1 + R^2)
+
 
 ################################ Script ################################
 
