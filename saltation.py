@@ -60,10 +60,15 @@ def find_threshold_speeds(diameters: torch.Tensor):
 # Pankine and Ingersoll, Interannual Variability of Martian Global Dust Storms, 2002
 def generate_flux_tensor(s0, particle_diameters, u_freestream):
     D, U_fs = torch.meshgrid(particle_diameters, u_freestream, indexing="ij")
-    U_threshold = find_threshold_speeds(D)
+    U_threshold = torch.zeros_like(D)
+    # helper function only takes vector inputs (brute force looping)
+    for row_num, row in enumerate(D.tolist()):
+        U_threshold[row_num] = find_threshold_speeds(torch.as_tensor(row))
+    # skin-friction coefficient from [3] pg 577 eq. 18.76
     Cf = 0
     U_friction = U_fs * Cf
-    R = U_threshold / U_friction # need to build in minimum
+    # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
+    R = torch.minimum(U_threshold / U_friction, torch.ones_like(U_friction))
     G = s0 * U_friction**3 * (1 - R) * (1 + R^2)
 
 
