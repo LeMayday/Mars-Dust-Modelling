@@ -1,13 +1,19 @@
 # Author: Chris May
 # 2/1/2024
 
+############################## References ##############################
+'''
+[1] Wind as a Geological Process, Greeley & Iversen, 1985
+[2] Pankine and Ingersoll, Interannual Variability of Martian Global Dust Storms, 2002
+[3] Boundary Layer Theory, Schlichting, 1955
+'''
+########################### Global Variables ###########################
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from scipy.optimize import fsolve
-
-########################### Global Variables ###########################
 
 g = 375                     # cm / s^2
 rho_p_over_rho = 240000
@@ -16,8 +22,9 @@ nu = 11.19                  # cm^2 / s
 
 ########################### Helper Functions ###########################
 
-# Wind as a Geological Process, Greeley & Iversen, 1985, pg 81
+# [1] pg 81
 def A_func(D, U):
+    # friction Reynolds number
     B = U * D / nu
     K = 0.006               # g cm^0.5 / s^2
     f_D = (1 + K / (rho_p * g * D**2.5))**0.5
@@ -31,25 +38,29 @@ def A_func(D, U):
     #A_out[B > 10] = (f_B3 * f_D)[B > 10]
     return A_out
 
+# dimensionless threshold friction speed
 def A_par(D, U):
     return U * (1/rho_p_over_rho / g / D) ** 0.5
 
 def A_minus_A_func(D, U):
     return A_par(D, U) - A_func(D, U)
 
+# plots 0 contour to recreate [1] Fig. 3.17 pg. 92
 def plot_contour(d, u):
     D, U = torch.meshgrid(d, u, indexing="ij")
     ax = plt.subplot()
+    # D in um, U in m/s
     ax.contour(D * 1E4, U / 1E2, A_minus_A_func(D, U), levels=[0])
     ax.set_xscale('log')
     ax.set_yscale('log')
-    # https://stackoverflow.com/a/33213196
+    # make ticks plain numbers instead of exponential notation https://stackoverflow.com/a/33213196
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     plt.show()
 
-def find_threshold_speeds(diameters: torch.Tensor):
+# takes vector input and performs root finding for each element in the vector
+def find_threshold_speeds(diameters: torch.Tensor) -> torch.Tensor:
     speeds = torch.zeros_like(diameters)
     for i, d in enumerate(diameters.tolist()):
         func = lambda u : A_minus_A_func(d, u)
@@ -57,7 +68,8 @@ def find_threshold_speeds(diameters: torch.Tensor):
         speeds[i] = fsolve(func, 5)
     return speeds
 
-# Pankine and Ingersoll, Interannual Variability of Martian Global Dust Storms, 2002
+# [2]
+# flux tensor is lookup table of particle flux as a function of diameter and freestream wind speed
 def generate_flux_tensor(s0, particle_diameters, u_freestream):
     D, U_fs = torch.meshgrid(particle_diameters, u_freestream, indexing="ij")
     U_threshold = torch.zeros_like(D)
@@ -75,7 +87,7 @@ def generate_flux_tensor(s0, particle_diameters, u_freestream):
 ################################ Script ################################
 
 num_pts = 50
-u_star_t = torch.as_tensor(np.geomspace(1, 10, num_pts)) * 1E2
-D_p = torch.as_tensor(np.geomspace(10, 1000, num_pts)) * 1E-4
+u_star_t = torch.as_tensor(np.geomspace(1, 10, num_pts)) * 1E2      # cm/s
+D_p = torch.as_tensor(np.geomspace(10, 1000, num_pts)) * 1E-4       # cm
 
 plot_contour(D_p, u_star_t)
