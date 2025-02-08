@@ -47,7 +47,7 @@ def A_minus_A_func(D, U):
 
 # plots 0 contour to recreate [1] Fig. 3.17 pg. 92
 def plot_contour(d, u):
-    D, U = torch.meshgrid(d, u, indexing="ij")
+    D, U = np.meshgrid(d, u, indexing="ij")
     fig, ax = plt.subplots()
     # D in um, U in m/s
     ax.contour(D * 1E4, U / 1E2, A_minus_A_func(D, U), levels=[0])
@@ -63,9 +63,9 @@ def plot_contour(d, u):
     fig.savefig("speed_v_diameter.png")
 
 # takes vector input and performs root finding for each element in the vector
-def find_threshold_speeds(diameters: torch.Tensor) -> torch.Tensor:
-    speeds = torch.zeros_like(diameters)
-    for i, d in enumerate(diameters.tolist()):
+def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
+    speeds = np.zeros_like(diameters)
+    for i, d in np.ndenumerate(diameters):
         func = lambda u : A_minus_A_func(d, u)
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fsolve.html
         speeds[i] = fsolve(func, 5)
@@ -73,24 +73,25 @@ def find_threshold_speeds(diameters: torch.Tensor) -> torch.Tensor:
 
 # [2]
 # flux tensor is lookup table of particle flux as a function of diameter and freestream wind speed
-def generate_flux_tensor(s0, particle_diameters, u_freestream):
-    D, U_fs = torch.meshgrid(particle_diameters, u_freestream, indexing="ij")
-    U_threshold = torch.zeros_like(D)
-    # helper function only takes vector inputs (brute force looping)
-    for row_num, row in enumerate(D.tolist()):
-        U_threshold[row_num] = find_threshold_speeds(torch.as_tensor(row))
+def generate_flux_tensor(particle_diameters, u_freestream):
+    D, U_fs = np.meshgrid(particle_diameters, u_freestream, indexing="ij")
+    U_threshold = find_threshold_speeds(D)
     # skin-friction coefficient from [3] pg 577 eq. 18.76
-    Cf = 0
+    # advised to set as 0.5
+    Cf = 0.5
     U_friction = U_fs * Cf
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
-    R = torch.minimum(U_threshold / U_friction, torch.ones_like(U_friction))
-    G = s0 * U_friction**3 * (1 - R) * (1 + R^2)
+    R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
+    # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
+    return U_friction**3 * (1 - R) * (1 + R^2)
 
 
 ################################ Script ################################
 
 num_pts = 50
-u_star_t = torch.as_tensor(np.geomspace(1, 10, num_pts)) * 1E2      # cm/s
-D_p = torch.as_tensor(np.geomspace(10, 1000, num_pts)) * 1E-4       # cm
+#u_star_t = torch.as_tensor(np.geomspace(1, 10, num_pts)) * 1E2      # cm/s
+#D_p = torch.as_tensor(np.geomspace(10, 1000, num_pts)) * 1E-4       # cm
+u_star_t = np.geomspace(1, 10, num_pts) * 1E2      # cm/s
+D_p = np.geomspace(10, 1000, num_pts) * 1E-4       # cm
 
 plot_contour(D_p, u_star_t)
