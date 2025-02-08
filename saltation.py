@@ -48,7 +48,7 @@ def A_minus_A_func(D, U):
 # plots 0 contour to recreate [1] Fig. 3.17 pg. 92
 def plot_contour(d, u):
     D, U = torch.meshgrid(d, u, indexing="ij")
-    ax = plt.subplot()
+    fig, ax = plt.subplots()
     # D in um, U in m/s
     ax.contour(D * 1E4, U / 1E2, A_minus_A_func(D, U), levels=[0])
     ax.set_xscale('log')
@@ -57,7 +57,10 @@ def plot_contour(d, u):
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    plt.show()
+    ax.set_xlabel("Particle Diameter (um)")
+    ax.set_ylabel("Threshold Friction Speed (m/s)")
+    #plt.show()
+    fig.savefig("speed_v_diameter.png")
 
 # takes vector input and performs root finding for each element in the vector
 def find_threshold_speeds(diameters: torch.Tensor) -> torch.Tensor:
