@@ -68,14 +68,15 @@ def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
     for i, d in np.ndenumerate(diameters):
         func = lambda u : A_minus_A_func(d, u)
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fsolve.html
-        speeds[i] = fsolve(func, 5)
+        # initial guess is 500 cm/s which is close for the full range of diameters
+        speeds[i] = fsolve(func, 500)[0]
     return speeds
 
 # [2]
 # flux tensor is lookup table of particle flux as a function of diameter and freestream wind speed
 def generate_flux_tensor(particle_diameters, u_freestream):
-    D, U_fs = np.meshgrid(particle_diameters, u_freestream, indexing="ij")
-    U_threshold = find_threshold_speeds(D)
+    u_threshold = find_threshold_speeds(particle_diameters)
+    U_threshold, U_fs = np.meshgrid(u_threshold, u_freestream, indexing="ij")
     # skin-friction coefficient from [3] pg 577 eq. 18.76
     # advised to set as 0.5
     Cf = 0.5
@@ -83,15 +84,17 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
     R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
     # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
-    return U_friction**3 * (1 - R) * (1 + R^2)
+    return U_friction**3 * (1 - R) * (1 + R**2)
 
 
 ################################ Script ################################
 
 num_pts = 50
-#u_star_t = torch.as_tensor(np.geomspace(1, 10, num_pts)) * 1E2      # cm/s
-#D_p = torch.as_tensor(np.geomspace(10, 1000, num_pts)) * 1E-4       # cm
-u_star_t = np.geomspace(1, 10, num_pts) * 1E2      # cm/s
-D_p = np.geomspace(10, 1000, num_pts) * 1E-4       # cm
+u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
+D_p = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
+u_freestream = np.geomspace(0.1, 10, num_pts) * 1E2                 # cm/s
 
 plot_contour(D_p, u_star_t)
+
+flux_tensor = generate_flux_tensor(D_p, u_freestream)
+np.save("flux_tensor.npy", flux_tensor)
