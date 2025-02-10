@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from scipy.optimize import fsolve
 
-g = 375                     # cm / s^2
+g = 375                                 # cm / s^2
 rho_p_over_rho = 240000
-rho_p = 2650 / 1000         # g / cm^3
-nu = 11.19                  # cm^2 / s
+rho_p = 2650 / 1000                     # g / cm^3
+nu = 11.19                              # cm^2 / s
 
 ########################### Helper Functions ###########################
 
@@ -31,19 +31,15 @@ def A_func(D, U):
     # the dependence on B is piecewise
     f_B1 = 0.2 / (1 + 2.5 * B)**0.5
     f_B2 = 0.129 / (1.928 * B**0.092 - 1)**0.5
-    #f_B3 = 0.120 * (1 - 0.0858 * torch.exp(-0.0617 * (B - 10)))
+    f_B3 = 0.120 * (1 - 0.0858 * np.exp(-0.0617 * (B - 10)))
 
     A_out = f_B1 * f_D
     A_out[B > 0.3] = (f_B2 * f_D)[B > 0.3]
-    #A_out[B > 10] = (f_B3 * f_D)[B > 10]
+    A_out[B > 10] = (f_B3 * f_D)[B > 10]
     return A_out
 
-# dimensionless threshold friction speed
-def A_par(D, U):
-    return U * (1/rho_p_over_rho / g / D) ** 0.5
-
 def A_minus_A_func(D, U):
-    return A_par(D, U) - A_func(D, U)
+    return U * (1/rho_p_over_rho / g / D) ** 0.5 - A_func(D, U)
 
 # plots 0 contour to recreate [1] Fig. 3.17 pg. 92
 def plot_contour(d, u):
@@ -60,7 +56,7 @@ def plot_contour(d, u):
     ax.set_xlabel("Particle Diameter (um)")
     ax.set_ylabel("Threshold Friction Speed (m/s)")
     #plt.show()
-    fig.savefig("speed_v_diameter.png")
+    fig.savefig("diameter_v_speed.png")
 
 # takes vector input and performs root finding for each element in the vector
 def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
@@ -89,12 +85,12 @@ def generate_flux_tensor(particle_diameters, u_freestream):
 
 ################################ Script ################################
 
-num_pts = 50
+num_pts = 200
 u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
-D_p = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
-u_freestream = np.geomspace(0.1, 10, num_pts) * 1E2                 # cm/s
+particle_diameters = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
+u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 
-plot_contour(D_p, u_star_t)
+plot_contour(particle_diameters, u_star_t)
 
-flux_tensor = generate_flux_tensor(D_p, u_freestream)
+flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
