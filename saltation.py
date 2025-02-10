@@ -14,11 +14,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from scipy.optimize import fsolve
+from scipy.interpolate import RegularGridInterpolator
 
 g = 375                                 # cm / s^2
 rho_p_over_rho = 240000
 rho_p = 2650 / 1000                     # g / cm^3
 nu = 11.19                              # cm^2 / s
+source_area_density = 1000               # g / cm
 
 ########################### Helper Functions ###########################
 
@@ -82,6 +84,27 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
     return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
 
+# takes an array of N particle diameter sizes and a total supply and returns an array of N-1 densities for N-1 diameter buckets
+def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
+    l = 2
+    max_d = np.max(diameters)
+    min_d = np.min(diameters)
+    A = 8 * source_area_density * (4 - l) / (rho_p * (max_d**(4 - l) - min_d**(4 - l)))
+    supply_per_D = rho_p * (diameters / 2)**3 * A * diameters**(-l)
+    # need to multiply by size of bucket (equivalent to differential element dD)
+    for i in range(len(supply_per_D) - 1):
+        # left hand value taken as size for bucket
+        supply_per_D[i] = supply_per_D[i] * (diameters[i+1] - diameters[i])
+    return supply_per_D[:-1]
+
+def plot_bucket_depletion(diameters, bucket_times):
+    fig, ax = plt.subplots()
+    ax.plot(diameters[:-1], bucket_times)
+    ax.set_xscale('log')
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax.set_xlabel("Particle Diameter (um)")
+    ax.set_ylabel("Time to Deplete (s)")
+    return fig
 
 ################################ Script ################################
 
@@ -94,3 +117,16 @@ plot_contour(particle_diameters, u_star_t)
 
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
+
+interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
+
+u_test = np.array([3, 10, 20]) * 1E2
+bucket_densities = surface_dust_supply(particle_diameters)
+
+for u in u_test:
+    sample_pts = np.array([particle_diameters[:-1], np.full_like(bucket_densities, u)]).T
+    fluxes = interp(sample_pts)
+    times = bucket_densities / fluxes
+    fig = plot_bucket_depletion(particle_diameters, times)
+    fname = "diameter_v_deplete_time_%s_cm_s.png" %(u)
+    fig.savefig(fname)
