@@ -80,7 +80,7 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
     R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
     # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
-    return U_friction**3 * (1 - R) * (1 + R**2)
+    return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
 
 
 ################################ Script ################################
