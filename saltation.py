@@ -9,7 +9,6 @@
 '''
 ########################### Global Variables ###########################
 
-import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -86,7 +85,7 @@ def generate_flux_tensor(particle_diameters, u_freestream):
 
 # takes an array of N particle diameter sizes and a total supply and returns an array of N-1 densities for N-1 diameter buckets
 def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
-    l = 2
+    l = 5
     max_d = np.max(diameters)
     min_d = np.min(diameters)
     A = 8 * source_area_density * (4 - l) / (rho_p * (max_d**(4 - l) - min_d**(4 - l)))
@@ -113,7 +112,7 @@ u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
 particle_diameters = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
 u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 
-plot_contour(particle_diameters, u_star_t)
+#plot_contour(particle_diameters, u_star_t)
 
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
