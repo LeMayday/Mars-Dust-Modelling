@@ -59,6 +59,24 @@ def plot_contour(d, u):
     #plt.show()
     fig.savefig("diameter_v_speed.png")
 
+def plot_flux(d, u, fname, sname):
+    D, U = np.meshgrid(d, u, indexing="ij")
+    fluxes = np.load(fname)
+    fig, ax = plt.subplots()
+    # D in um, U in m/s
+    c = ax.contour(D * 1E4, U / 1E2, fluxes, levels=10)
+    ax.clabel(c, c.levels)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    # make ticks plain numbers instead of exponential notation https://stackoverflow.com/a/33213196
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax.set_xlabel("Particle Diameter (um)")
+    ax.set_ylabel("Freestream Wind Speed (m/s)")
+    #plt.show()
+    fig.savefig(sname)
+
 # takes vector input and performs root finding for each element in the vector
 def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
     speeds = np.zeros_like(diameters)
@@ -81,14 +99,18 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
     R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
     # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
-    return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
+    return rho_p / rho_p_over_rho * U_friction * (1 - R)
+    #return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
 
 # takes an array of N particle diameter sizes and a total supply and returns an array of N-1 densities for N-1 diameter buckets
 def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
     l = 5
     max_d = np.max(diameters)
     min_d = np.min(diameters)
-    A = 8 * source_area_density * (4 - l) / (rho_p * (max_d**(4 - l) - min_d**(4 - l)))
+    if l == 4:
+        A = 8 * source_area_density / (rho_p * np.log(max_d / min_d))
+    else:
+        A = 8 * source_area_density * (4 - l) / (rho_p * (max_d**(4 - l) - min_d**(4 - l)))
     supply_per_D = rho_p * (diameters / 2)**3 * A * diameters**(-l)
     # need to multiply by size of bucket (equivalent to differential element dD)
     for i in range(len(supply_per_D) - 1):
@@ -116,6 +138,10 @@ u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
+
+plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", "fluxes_per_L.png")
+
+plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", "fluxes")
 
 interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
