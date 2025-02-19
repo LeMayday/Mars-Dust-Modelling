@@ -20,6 +20,7 @@ rho_p_over_rho = 240000
 rho_p = 2650 / 1000                     # g / cm^3
 nu = 11.19                              # cm^2 / s
 source_area_density = 1000               # g / cm
+l = 5
 
 ########################### Helper Functions ###########################
 
@@ -59,12 +60,12 @@ def plot_contour(d, u):
     #plt.show()
     fig.savefig("diameter_v_speed.png")
 
-def plot_flux(d, u, fname, sname):
+def plot_flux(d, u, fname, sname, levels):
     D, U = np.meshgrid(d, u, indexing="ij")
     fluxes = np.load(fname)
     fig, ax = plt.subplots()
     # D in um, U in m/s
-    c = ax.contour(D * 1E4, U / 1E2, fluxes, levels=10)
+    c = ax.contour(D * 1E4, U / 1E2, fluxes, levels=levels)
     ax.clabel(c, c.levels)
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -104,7 +105,6 @@ def generate_flux_tensor(particle_diameters, u_freestream):
 
 # takes an array of N particle diameter sizes and a total supply and returns an array of N-1 densities for N-1 diameter buckets
 def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
-    l = 5
     max_d = np.max(diameters)
     min_d = np.min(diameters)
     if l == 4:
@@ -119,12 +119,18 @@ def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
     return supply_per_D[:-1]
 
 def plot_bucket_depletion(diameters, bucket_times):
+    return plot_logx(diameters[:-1] * 1E4, bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
+
+def plot_density_distribution(diameters, densities):
+    return plot_logx(diameters[:-1] * 1E4, densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
+
+def plot_logx(x, y, xlabel, ylabel):
     fig, ax = plt.subplots()
-    ax.plot(diameters[:-1], bucket_times)
+    ax.plot(x, y)
     ax.set_xscale('log')
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax.set_xlabel("Particle Diameter (um)")
-    ax.set_ylabel("Time to Deplete (s)")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     return fig
 
 ################################ Script ################################
@@ -139,14 +145,18 @@ u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
 
-plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", "fluxes_per_L.png")
+plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", "fluxes_per_L.png", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
 
-plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", "fluxes")
+plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", "fluxes", 10)
 
 interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
 u_test = np.array([3, 10, 20]) * 1E2
 bucket_densities = surface_dust_supply(particle_diameters)
+
+fig = plot_density_distribution(particle_diameters, bucket_densities)
+fname = "diameter_v_bucket_densities_l_%s.png" %(l)
+fig.savefig(fname)
 
 for u in u_test:
     sample_pts = np.array([particle_diameters[:-1], np.full_like(bucket_densities, u)]).T
