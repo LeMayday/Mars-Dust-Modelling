@@ -6,6 +6,7 @@
 [1] Wind as a Geological Process, Greeley & Iversen, 1985
 [2] Pankine and Ingersoll, Interannual Variability of Martian Global Dust Storms, 2002
 [3] Boundary Layer Theory, Schlichting, 1955
+[4] Soil Transport by Winds on Mars, White, 1979
 '''
 ########################### Global Variables ###########################
 
@@ -97,6 +98,7 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
     R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
     # equation given in text has s0 proportionality parameter, but this is assumed to be 1 here
+    # [4] eq 15 pg 4649
     return rho_p / rho_p_over_rho * U_friction * (1 - R)
     #return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
 
