@@ -156,7 +156,7 @@ fig.savefig("fluxes.png")
 
 interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
-u_test = np.array([3, 10, 20]) * 1E2
+u_test = np.array([5, 10, 20]) * 1E2
 bucket_densities = surface_dust_supply(particle_diameters)
 
 fig = plot_density_distribution(particle_diameters, bucket_densities)
