@@ -49,26 +49,23 @@ def A_minus_A_func(D, U):
 # plots 0 contour to recreate [1] Fig. 3.17 pg. 92
 def plot_contour(d, u):
     D, U = np.meshgrid(d, u, indexing="ij")
-    fig, ax = plt.subplots()
-    # D in um, U in m/s
-    ax.contour(D * 1E4, U / 1E2, A_minus_A_func(D, U), levels=[0])
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    # make ticks plain numbers instead of exponential notation https://stackoverflow.com/a/33213196
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    fig, ax = plot_loglog_contour(D * 1E4, U / 1E2, A_minus_A_func(D, U), [0])
     ax.set_xlabel("Particle Diameter (um)")
     ax.set_ylabel("Threshold Friction Speed (m/s)")
-    #plt.show()
     fig.savefig("diameter_v_speed.png")
 
-def plot_flux(d, u, fname, sname, levels):
+def plot_flux(d, u, fname, levels) -> Figure:
     D, U = np.meshgrid(d, u, indexing="ij")
     fluxes = np.load(fname)
+    fig, ax = plot_loglog_contour(D * 1E4, U / 1E2, fluxes, levels)
+    ax.set_xlabel("Particle Diameter (um)")
+    ax.set_ylabel("Freestream Wind Speed (m/s)")
+    #fig.savefig(sname)
+    return fig
+
+def plot_loglog_contour(X, Y, Z, levels):
     fig, ax = plt.subplots()
-    # D in um, U in m/s
-    c = ax.contour(D * 1E4, U / 1E2, fluxes, levels=levels)
+    c = ax.contour(X, Y, Z, levels=levels)
     ax.clabel(c, c.levels)
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -76,10 +73,7 @@ def plot_flux(d, u, fname, sname, levels):
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.yaxis.set_minor_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax.set_xlabel("Particle Diameter (um)")
-    ax.set_ylabel("Freestream Wind Speed (m/s)")
-    #plt.show()
-    fig.savefig(sname)
+    return fig, ax
 
 # takes vector input and performs root finding for each element in the vector
 def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
@@ -154,9 +148,11 @@ u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
 
-plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", "fluxes_per_L.png", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
+fig = plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
+fig.savefig("fluxes_per_L.png")
 
-plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", "fluxes", 10)
+fig = plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", 10)
+fig.savefig("fluxes.png")
 
 interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
