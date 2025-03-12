@@ -116,11 +116,21 @@ def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
     return supply_per_D[:-1]
 
 def plot_bucket_depletion(diameters, bucket_times):
-    fig, ax = plot_loglog(diameters[:-1] * 1E4, bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
+    fig, ax = plot_loglog(diameters[:-1], bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
+    # plot vertical lines for cutoff diameters where flux drops to 0
     min_diameter_index = np.argmax(np.isfinite(bucket_times))
+    ylims = ax.get_ylim()
     if min_diameter_index != 0:
-        min_diameter = diameters[min_diameter_index] * 1E4
-        ax.loglog([min_diameter, min_diameter], ax.get_ylim(), '--k')
+        min_diameter = diameters[min_diameter_index]
+        ax.loglog([min_diameter, min_diameter], ylims, '--k')
+        # https://mkaz.blog/working-with-python/string-formatting/
+        ax.text(min_diameter, ylims[1], "{:.2f}".format(min_diameter), verticalalignment='bottom', horizontalalignment='center')
+    # minus 1 to hit the last finite value
+    max_diameter_index = np.argmax(np.isinf(bucket_times[min_diameter_index:])) + min_diameter_index - 1
+    if max_diameter_index != min_diameter_index - 1:
+        max_diameter = diameters[max_diameter_index]
+        ax.loglog([max_diameter, max_diameter], ylims, '--k')
+        ax.text(max_diameter, ylims[1], "{:.1f}".format(max_diameter), verticalalignment='bottom', horizontalalignment='center')
     return fig
 
 def plot_density_distribution(diameters, densities):
@@ -160,13 +170,11 @@ u_test = np.array([5, 10, 20]) * 1E2
 bucket_densities = surface_dust_supply(particle_diameters)
 
 fig = plot_density_distribution(particle_diameters, bucket_densities)
-fname = "diameter_v_bucket_densities_l_%s.png" %(l)
-fig.savefig(fname)
+fig.savefig("diameter_v_bucket_densities_l_%s.png" %(l))
 
 for u in u_test:
     sample_pts = np.array([particle_diameters[:-1], np.full_like(bucket_densities, u)]).T
     fluxes = interp(sample_pts)
     times = bucket_densities / fluxes
-    fig = plot_bucket_depletion(particle_diameters, times)
-    fname = "diameter_v_deplete_time_%s_cm_s.png" %(u)
-    fig.savefig(fname)
+    fig = plot_bucket_depletion(particle_diameters * 1E4, times)
+    fig.savefig("diameter_v_deplete_time_%s_cm_s.png" %(u))
