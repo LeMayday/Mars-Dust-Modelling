@@ -12,8 +12,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from scipy.optimize import fsolve
 from scipy.interpolate import RegularGridInterpolator
+from typing import Tuple
 
 g = 375                                 # cm / s^2
 rho_p_over_rho = 240000
@@ -119,19 +122,25 @@ def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
     return supply_per_D[:-1]
 
 def plot_bucket_depletion(diameters, bucket_times):
-    return plot_logx(diameters[:-1] * 1E4, bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
+    fig, ax = plot_loglog(diameters[:-1] * 1E4, bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
+    min_diameter_index = np.argmax(np.isfinite(bucket_times))
+    if min_diameter_index != 0:
+        min_diameter = diameters[min_diameter_index] * 1E4
+        ax.loglog([min_diameter, min_diameter], ax.get_ylim(), '--k')
+    return fig
 
 def plot_density_distribution(diameters, densities):
-    return plot_logx(diameters[:-1] * 1E4, densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
+    fig, ax = plot_loglog(diameters[:-1] * 1E4, densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
+    return fig
 
-def plot_logx(x, y, xlabel, ylabel):
+def plot_loglog(x, y, xlabel, ylabel) -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots()
-    ax.plot(x, y)
-    ax.set_xscale('log')
+    ax.loglog(x, y)
+    #ax.set_xscale('log')
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    return fig
+    return fig, ax
 
 ################################ Script ################################
 
