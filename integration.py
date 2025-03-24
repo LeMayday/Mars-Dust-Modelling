@@ -12,7 +12,7 @@ a_mat = np.array([[1/4, 0], [1/2, 1/4]])
 
 zi = 0
 zf = 1
-num_z = 100
+num_z = 1000
 dz = (zf - zi) / num_z
 dt = 0.001
 
@@ -33,7 +33,7 @@ F = F[1:-1, 1:-1]
 
 I = np.eye(m)
 
-Phi_RK2 = I + b_vec[0] * inv(I - dt * a_mat[0,0] * F) @ F + b_vec[1] * inv(I - dt * a_mat[1,1] * F) @ F @ (I + dt * a_mat[0,1] * inv(I - dt * a_mat[0,0] * F) @ F)
+Phi_RK2 = I + b_vec[0] * dt * inv(I - dt * a_mat[0,0] * F) @ F + b_vec[1] * dt * inv(I - dt * a_mat[1,1] * F) @ F @ (I + dt * a_mat[0,1] * inv(I - dt * a_mat[0,0] * F) @ F)
 
 Phi_RK1 = inv(I - dt * F)
 
@@ -54,7 +54,7 @@ def integrate(n, Z0, S, D):
 def plot_func(z, Z):
     fig, ax = plt.subplots()
     ax.plot(z, Z)
-    # ax.set_ylim([-3, 3])
+    ax.set_ylim([min(-3.0, np.min(Z)), max(3.0, np.max(Z))])
     return fig
 
 def time_evolve(n, z_grid, Z0, Phi, savename):
@@ -71,8 +71,8 @@ def time_evolve(n, z_grid, Z0, Phi, savename):
 
 Z0 = 1/2 * np.sin(np.pi * z) - 3/2 * np.sin(3 * np.pi * z) + np.sin(8 * np.pi * z)
 
-# time_evolve(n, z[1:-1], Z0[1:-1], Phi_RK2, "result_RK2.mp4")
+time_evolve(n, z[1:-1], Z0[1:-1], Phi_RK2, "result_RK2.mp4")
 
 # time_evolve(n, z[1:-1], Z0[1:-1], Phi_RK1, "reuslt_RK1.mp4")
 
-time_evolve(n, z[1:-1], Z0[1:-1], Phi_RK1_1, "reuslt_RK1_1.mp4")
+# time_evolve(n, z[1:-1], Z0[1:-1], Phi_RK1_1, "reuslt_RK1_1.mp4")
