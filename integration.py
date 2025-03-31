@@ -55,13 +55,12 @@ zi = 0
 zf = 1
 num_z = 100
 dz = (zf - zi) / num_z
-dt = 0.001
 
 t_stop = 0.1
 z = np.linspace(zi, zf, num_z)
 
 D = 1
-w = 0
+w = 2
 rho_a = 1 + 0*z
 
 m = num_z - 2
