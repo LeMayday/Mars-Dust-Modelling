@@ -89,7 +89,7 @@ def euler_step(f, L, dt, F):
     if neumann:
         flux_vec = np.zeros_like(f)
         c = D / dz**2 * rho_a[-2] / rho_a[-1]
-        flux_vec[-1] = c * F * dz
+        flux_vec[-1] = c * F/D * dz
         return f + dt * (L @ f + flux_vec)
     return f + dt * L @ f
 
