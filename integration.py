@@ -4,6 +4,10 @@
 ############################## References ##############################
 '''
 [1] Numerical Methods for Fluid Dynamics, Dale R. Durran, 2nd Ed
+Also see: https://aquaulb.github.io/book_solving_pde_mooc/solving_pde_mooc/notebooks/04_PartialDifferentialEquations/04_03_Diffusion_Explicit.html
+https://gkeyll.readthedocs.io/en/latest/dev/ssp-rk.html#region-of-absolute-stability
+https://www.cfm.brown.edu/people/sg/SSPlinear.pdf
+https://www.math.umd.edu/~tadmor/pub/linear-stability/Gottlieb-Shu-Tadmor.SIREV-01.pdf
 '''
 
 import numpy as np
