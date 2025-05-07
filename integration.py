@@ -41,7 +41,7 @@ neumann = True
 
 def main():
     t_stop = 1
-    F = -10
+    F = 10
 
     L = generate_RHS_matrix(num_z, dz, rho_a)
 
@@ -109,7 +109,7 @@ def time_evolve(t_stop, dt, Zn, L, F, savename):
         if t_current != 0:
             Zn = SSP_RK3(Zn, L, dt, F)
         if n % 100 == 0:
-            fig = plot_func(z, Zn, t_current)
+            fig = plot_func(z, np.flip(Zn), t_current)
             output_file = 'frame_%s.png' %(n)
             fig.savefig(output_file)
             plt.close(fig)
