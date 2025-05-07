@@ -21,7 +21,7 @@ from typing import Tuple
 SSP_RK3_Coeff = np.array([[3/4, 1/4], [1/3, 2/3]])
 # problem definition
 D = 1
-w = 0
+w = -2
 zi = 0
 zf = 1
 
@@ -116,6 +116,14 @@ def time_evolve(t_stop, dt, Zn, L, F, savename):
             filenames.append(output_file)
         t_current += dt
         n += 1
+
+    fig, ax = subplots()
+    ax.plot(z, np.flip(Zn), label='Numerical')
+    ax.plot(z, F/w * np.exp(w/D) + -F/w * np.exp(w/D * z), '--k', label='Analytical')
+    ax.legend()
+    ax.set_ylim([min(-1.0, np.min(Zn)), max(3.0, np.max(Zn))])
+    fig.savefig('last_frame.png')
+    plt.close(fig)
     create_movie(filenames, savename)
     delete_files(filenames)
 
