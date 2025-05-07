@@ -24,7 +24,7 @@ rho_p_over_rho = 240000
 rho_p = 2650 / 1000                     # g / cm^3
 nu = 11.19                              # cm^2 / s
 source_area_density = 1000               # g / cm
-l = 5
+l = 3
 
 ########################### Helper Functions ###########################
 
