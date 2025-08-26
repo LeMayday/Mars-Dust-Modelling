@@ -67,7 +67,7 @@ def plot_flux(d, u, fname, levels) -> Figure:
 def plot_loglog_contour(X, Y, Z, levels):
     fig, ax = plt.subplots()
     c = ax.contour(X, Y, Z, levels=levels)
-    ax.clabel(c, c.levels)
+    ax.clabel(c, c.levels) # type: ignore
     ax.set_xscale('log')
     ax.set_yscale('log')
     # make ticks plain numbers instead of exponential notation https://stackoverflow.com/a/33213196
