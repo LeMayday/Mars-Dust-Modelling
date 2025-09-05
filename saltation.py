@@ -160,8 +160,8 @@ u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
 np.save("flux_tensor.npy", flux_tensor)
 
-fig = plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
-fig.savefig("fluxes_per_L.png")
+# fig = plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
+# fig.savefig("fluxes_per_L.png")
 
 fig = plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", 10)
 fig.savefig("fluxes.png")

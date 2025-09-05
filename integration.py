@@ -63,7 +63,7 @@ def subplots() -> Tuple[Figure, Axes]:
 def plot_func(z, Z, time):
     fig, ax = subplots()
     ax.plot(z, Z)
-    ax.set_ylim([min(-3.0, np.min(Z)), max(3.0, np.max(Z))])
+    ax.set_ylim(min(-3.0, np.min(Z)), max(3.0, np.max(Z)))
     ylims = ax.get_ylim()
     xlims = ax.get_xlim()
     ax.text(xlims[1], ylims[1], "{:.2f}".format(time), verticalalignment='bottom', horizontalalignment='right')
@@ -121,7 +121,7 @@ def time_evolve(t_stop, dt, Zn, L, F, savename):
     ax.plot(z, np.flip(Zn), label='Numerical')
     ax.plot(z, F/w * np.exp(w/D) + -F/w * np.exp(w/D * z), '--k', label='Analytical')
     ax.legend()
-    ax.set_ylim([min(-1.0, np.min(Zn)), max(3.0, np.max(Zn))])
+    ax.set_ylim(min(-1.0, np.min(Zn)), max(3.0, np.max(Zn)))
     fig.savefig('last_frame.png')
     plt.close(fig)
     create_movie(filenames, savename)
