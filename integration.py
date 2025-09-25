@@ -60,10 +60,11 @@ def subplots() -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots()
     return fig, ax
 
-def plot_func(z, Z, time):
+def plot_func(z, Z, time, Z_min = 0, Z_max = 0):
     fig, ax = subplots()
     ax.plot(z, Z)
-    ax.set_ylim(min(-3.0, np.min(Z)), max(3.0, np.max(Z)))
+    if Z_min != 0 and Z_max != 0:
+        ax.set_ylim(min(Z_min, np.min(Z)), max(Z_max, np.max(Z)))
     ylims = ax.get_ylim()
     xlims = ax.get_xlim()
     ax.text(xlims[1], ylims[1], "{:.2f}".format(time), verticalalignment='bottom', horizontalalignment='right')
@@ -109,7 +110,7 @@ def time_evolve(t_stop, dt, Zn, L, F, savename):
         if t_current != 0:
             Zn = SSP_RK3(Zn, L, dt, F)
         if n % 100 == 0:
-            fig = plot_func(z, np.flip(Zn), t_current)
+            fig = plot_func(z, np.flip(Zn), t_current, -3.0, 3.0)
             output_file = 'frame_%s.png' %(n)
             fig.savefig(output_file)
             plt.close(fig)
