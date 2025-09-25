@@ -12,7 +12,7 @@ g = 9.8         # m/s^2
 
 z_min = 0
 z_max = 10E3
-z_cells = 10000
+z_cells = 100
 
 z = torch.linspace(z_min, z_max, z_cells)
 
@@ -29,9 +29,11 @@ rho_adiabatic = rho0 * (T_adiabatic / T0) ** (Cv / R)
 
 # 2D, Note first index is air column, second is row
 
-x_cells = 1000
+x_cells = 100
 p_isotherm_2D = p_isotherm.repeat(x_cells, 1)
 rho_isotherm_2D = rho_isotherm.repeat(x_cells, 1)
 
 p_adiabatic_2D = p_adiabatic.repeat(x_cells, 1)
 rho_adiabatic_2D = rho_adiabatic.repeat(x_cells, 1)
+print(rho_isotherm)
+print(rho_adiabatic)
