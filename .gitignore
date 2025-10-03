@@ -161,4 +161,4 @@ cython_debug/
 
 *.png
 *.mp4
-*output/*.nc
+*output*/*.nc
