@@ -11,7 +11,7 @@ species:
 
 geometry:
   type: cartesian
-  bounds: {x1min: 0., x1max: 20.e3, x2min: 0., x2max: 75.e3, x3min: 0., x3max: 75.e3}
+  bounds: {x1min: 0., x1max: 20.e3, x2min: 0., x2max: 80.e3, x3min: 0., x3max: 80.e3}
   cells: {nx1: 64, nx2: 256, nx3: 1, nghost: 3}
 
 dynamics:
@@ -51,7 +51,7 @@ integration:
   cfl: 0.9
   implicit-scheme: 0
   nlim: -1
-  tlim: 86400
+  tlim: 43200
 
 forcing:
   const-gravity:

@@ -13,10 +13,13 @@ from snapy import (
 import matplotlib.pyplot as plt
 from torch.profiler import profile, record_function, ProfilerActivity
 from movie_from_pngs import delete_files, create_movie
-from integration import plot_func
+# from integration import plot_func
+from plotting import *
+import os
 
 torch.set_default_dtype(torch.float64)
 
+experiment_name = input("Experiment Name:\n")
 # torch.set_num_threads(1)
 # torch.set_num_interop_threads(1)
 
@@ -30,8 +33,8 @@ Rd = 189.0          # gas constant
 gamma = 1.29
 o = 5.67E-8         # W / m^2 / K^4
 s0 = 580;           # W / m^2
-Teq = (s0 / o / 4) ** (1/4)
-q_dot = o * Teq **4     # heat flux
+# Teq = (s0 / o / 4) ** (1/4)
+q_dot = s0 / 4      # heat flux
 
 # device
 device = torch.device("cuda:0")
@@ -81,8 +84,13 @@ block_vars["scalar_x"] = torch.tensor(0.)
 block_vars["scalar_v"] = torch.tensor(0.)
 
 # make output
-out2 = NetcdfOutput(OutputOptions().file_basename("output/convection").fid(2).variable("prim"))
-out3 = NetcdfOutput(OutputOptions().file_basename("output/convection").fid(3).variable("uov"))
+directory = f"output_{experiment_name}"
+try:
+    os.mkdir(directory)
+except FileExistsError:
+    pass
+out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection").fid(2).variable("prim"))
+out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection").fid(3).variable("uov"))
 
 block.set_uov("temp", temp)
 block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
@@ -106,23 +114,38 @@ filenames = []
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
 
-    if count % 1000 == 0:
+    if count % 500 == 0:
         print(f"count = {count}, dt = {dt}, time = {current_time}")
         u = block_vars["hydro_u"]
         print("mass = ", u[interior][index.idn].sum())
 
         ivol = thermo.compute("DY->V", (w[index.idn], w[index.icy:]))
         temp = thermo.compute("PV->T", (w[index.ipr], ivol))
+        theta = temp * (p0 / w[index.ipr]).pow(Rd / cp)
 
         block.set_uov("temp", temp)
-        block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
+        block.set_uov("theta", theta)
 
         for out in [out2, out3]:
             out.increment_file_number()
             out.write_output_file(block, block_vars, current_time)
             out.combine_blocks()
 
-        fig = plot_func(coord.buffer("x1v")[interior[-1]].cpu(), torch.mean(temp[interior[1:]], dim=[0, 1]).cpu(), current_time)
+        fig, axes = subplots(2, 2)
+        ax1 = axes[0, 0]
+        plot_func(coord.buffer("x1v")[interior[-1]].cpu(), torch.mean(temp[interior[1:]], dim=[0, 1]).cpu(), current_time, ax = ax1)
+        ax1.set_title("Temp")
+        ax2 = axes[0, 1]
+        plot_func(coord.buffer("x2v")[interior[-1]].cpu(), torch.mean(theta[interior[1:]], dim=[0, 1]).cpu(), current_time, ax = ax2)
+        ax2.set_title("Theta")
+        ax3 = axes[1, 0]
+        plot_2D_vectors(x3v[interior[1:]][:, :, 0].cpu(), x2v[interior[1:]][:, :, 0].cpu(), w[interior][index.ivx][:, :, 0].cpu() * 0, w[interior][index.ivx][:, :, 0].cpu(), current_time, ax = ax3)
+#         plot_2D_colormap(x3v[interior[1:]].cpu(), x2v[interior[1:]].cpu(), w[interior][index.ivx][:, :, 0].cpu(), current_time, ax = ax3)
+        ax3.set_title("Vz Bottom")
+        ax4 = axes[1, 1]
+        plot_2D_vectors(x3v[interior[1:]][:, :, -1].cpu(), x2v[interior[1:]][:, :, -1].cpu(), w[interior][index.ivx][:, :, -1].cpu() * 0, w[interior][index.ivx][:, :, -1].cpu(), current_time, ax = ax4)
+#         plot_2D_colormap(x3v[interior[1:]].cpu(), x2v[interior[1:]].cpu(), w[interior][index.ivx][:, :, -1].cpu(), current_time, ax = ax4)
+        ax4.set_title("Vz Top")
         output_file = f"frame_{count}.png"
         fig.savefig(output_file)
         plt.close(fig)
@@ -139,7 +162,7 @@ while not block.intg.stop(count, current_time):
     current_time += dt
 
 print("elapsed time = ", time.time() - start_time)
-create_movie(filenames, "vertical_temp.mp4")
+create_movie(filenames, f"vertical_temp_{experiment_name}.mp4")
 delete_files(filenames)
 # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 # print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
