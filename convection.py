@@ -10,11 +10,7 @@ from snapy import (
         OutputOptions,
         NetcdfOutput
         )
-import matplotlib.pyplot as plt
 from torch.profiler import profile, record_function, ProfilerActivity
-from movie_from_pngs import delete_files, create_movie
-# from integration import plot_func
-from plotting import *
 import os
 
 torch.set_default_dtype(torch.float64)
@@ -109,12 +105,11 @@ top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[
 top_row_height = top_row_height.to(device)  
 
 w[interior][index.ivx] = torch.randn_like(w[interior][index.ivx])
-filenames = []
 # with profile(activities=activities, record_shapes=True) as prof:
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
 
-    if count % 500 == 0:
+    if count % 1000 == 0:
         print(f"count = {count}, dt = {dt}, time = {current_time}")
         u = block_vars["hydro_u"]
         print("mass = ", u[interior][index.idn].sum())
@@ -131,26 +126,6 @@ while not block.intg.stop(count, current_time):
             out.write_output_file(block, block_vars, current_time)
             out.combine_blocks()
 
-        fig, axes = subplots(2, 2)
-        ax1 = axes[0, 0]
-        plot_func(coord.buffer("x1v")[interior[-1]].cpu(), torch.mean(temp[interior[1:]], dim=[0, 1]).cpu(), current_time, ax = ax1)
-        ax1.set_title("Temp")
-        ax2 = axes[0, 1]
-        plot_func(coord.buffer("x2v")[interior[-1]].cpu(), torch.mean(theta[interior[1:]], dim=[0, 1]).cpu(), current_time, ax = ax2)
-        ax2.set_title("Theta")
-        ax3 = axes[1, 0]
-        plot_2D_vectors(x3v[interior[1:]][:, :, 0].cpu(), x2v[interior[1:]][:, :, 0].cpu(), w[interior][index.ivx][:, :, 0].cpu() * 0, w[interior][index.ivx][:, :, 0].cpu(), current_time, ax = ax3)
-#         plot_2D_colormap(x3v[interior[1:]].cpu(), x2v[interior[1:]].cpu(), w[interior][index.ivx][:, :, 0].cpu(), current_time, ax = ax3)
-        ax3.set_title("Vz Bottom")
-        ax4 = axes[1, 1]
-        plot_2D_vectors(x3v[interior[1:]][:, :, -1].cpu(), x2v[interior[1:]][:, :, -1].cpu(), w[interior][index.ivx][:, :, -1].cpu() * 0, w[interior][index.ivx][:, :, -1].cpu(), current_time, ax = ax4)
-#         plot_2D_colormap(x3v[interior[1:]].cpu(), x2v[interior[1:]].cpu(), w[interior][index.ivx][:, :, -1].cpu(), current_time, ax = ax4)
-        ax4.set_title("Vz Top")
-        output_file = f"frame_{count}.png"
-        fig.savefig(output_file)
-        plt.close(fig)
-        filenames.append(output_file)
-
     for stage in range(len(block.intg.stages)):
         block.forward(dt, stage, block_vars)
         u = block_vars["hydro_u"]
@@ -162,7 +137,5 @@ while not block.intg.stop(count, current_time):
     current_time += dt
 
 print("elapsed time = ", time.time() - start_time)
-create_movie(filenames, f"vertical_temp_{experiment_name}.mp4")
-delete_files(filenames)
 # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 # print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
