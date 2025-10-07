@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from movie_from_pngs import delete_files, create_movie
 from plotting import *
 import os
+#import kintera
+#from snapy import MeshBlockOptions
 
 def get_nc_files(directory):
     out2_files = []
@@ -20,19 +22,27 @@ def get_nc_files(directory):
                     out3_files.append(os.path.join(directory, filename))
     return out2_files, out3_files 
 
+# for some reason, importing kintera and snapy makes the code not work due to some h5py issue
+g = 3.75
+#MeshBlockOptions.from_yaml("convection.yaml")
+#Rd = kintera.constants.Rgas / kintera.species_weights()[0]
+#cv = kintera.species_cref_R()[0] * Rd
+#cp = cv + Rd
+cp = 842
+
 experiment_name = input("Experiment Name:\n")
 working_dir = f"output_{experiment_name}"
 nc2_files, nc3_files = get_nc_files(working_dir)
 ref_data = xr.open_dataset(nc2_files[0]).isel(time=0)
 X, Y, Z = np.meshgrid(ref_data['x2'], ref_data['x3'], ref_data['x1'])
 
-plot_temp_flag = 0
+plot_temp_flag = 1
 filenames1 = []
 
-plot_vert_vel_flag = 1
+plot_vert_vel_flag = 0
 filenames2 = []
 
-plot_hor_vel_flag = 1
+plot_hor_vel_flag = 0
 filenames3 = []
 
 plot_vel_vector_flag = 0
@@ -53,6 +63,7 @@ for n in range(len(nc2_files)):
 
         temp_data = data3['temp']
         plot_func(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'], current_time, ax = ax1)
+        plot_func(-g / cp * temp_data['x1'] + 260, temp_data['x1'], current_time, ax = ax1)
         ax1.set_title("Temp")
 
         theta_data = data3['theta']
