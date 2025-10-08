@@ -105,7 +105,7 @@ bottom_row_height = bottom_row_height.to(device)
 top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
 top_row_height = top_row_height.to(device)  
 
-w[interior][index.ivx] = torch.randn_like(w[interior][index.ivx])
+w[interior][index.ivx] = torch.randn_like(w[interior][index.ivy])
 # with profile(activities=activities, record_shapes=True) as prof:
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
