@@ -15,6 +15,7 @@ import os
 
 torch.set_default_dtype(torch.float64)
 
+torch.manual_seed(42)
 experiment_name = input("Experiment Name:\n")
 # torch.set_num_threads(1)
 # torch.set_num_interop_threads(1)
