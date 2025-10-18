@@ -12,11 +12,20 @@ from snapy import (
         )
 from torch.profiler import profile, record_function, ProfilerActivity
 import os
+import argparse
 
 torch.set_default_dtype(torch.float64)
 
 torch.manual_seed(42)
-experiment_name = input("Experiment Name:\n")
+# experiment_name = input("Experiment Name:\n")
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--experiment-name", required=True, help="Name of the experiment")
+parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
+args = parser.parse_args()
+experiment_name = args.experiment_name
+# 3D is not a valid python identifier, but it can be used as a dict key
+if vars(args)['3D']:
+    experiment_name = experiment_name + "_3D"
 # torch.set_num_threads(1)
 # torch.set_num_interop_threads(1)
 
@@ -37,7 +46,8 @@ q_dot = s0 / 4      # heat flux
 device = torch.device("cuda:0")
 
 # set hydrodynamic options
-op = MeshBlockOptions.from_yaml("convection.yaml")
+print("Reading input file: " + f"convection_{experiment_name}.yaml")
+op = MeshBlockOptions.from_yaml(f"convection_{experiment_name}.yaml")
 
 # initialize block
 block = MeshBlock(op)
