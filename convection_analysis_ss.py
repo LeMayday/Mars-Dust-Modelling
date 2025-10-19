@@ -49,7 +49,7 @@ for exp in experiment_names:
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 1, "files": []}
-plot_dict["hori_temp_theta"] = {"flag": 1, "files": []}
+plot_dict["hori_temp_theta"] = {"flag": 0, "files": []}
 plot_dict["vert_vel_top_bot"] = {"flag": 1, "files": []}
 plot_dict["hori_vel"] = {"flag": 1, "files": []}
 
@@ -75,6 +75,7 @@ legend_labels = ["Experiment " + exp for exp in experiment_names]
 for key, value in plot_dict.items():
     if not value["flag"]:
         continue
+    fig = value["fig"]
     if key == "vert_temp_theta":
         ax1 = value["ax1"]
         ax1.set_title("Temp")
@@ -96,7 +97,7 @@ for key, value in plot_dict.items():
         ax2.legend(legend_labels)
         fig.tight_layout()
 
-    elif key == "horizontal_vel":
+    elif key == "hori_vel":
         ax1 = value["ax1"]
         ax1.set_title('Mean Horizontal Vel')
 
@@ -110,7 +111,7 @@ for key, value in plot_dict.items():
         ax1.legend(legend_labels)
         fig.tight_layout()
 
-    elif key == "vertical_vel_top_bottom":
+    elif key == "vert_vel_top_bot":
         ax1 = value["ax1"]
         ax1.set_title("Vz Bottom")
         ax2 = value["ax2"]
