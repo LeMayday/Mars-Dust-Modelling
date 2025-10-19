@@ -71,6 +71,7 @@ for key, value in plot_dict.items():
         value["ax1"] = fig.add_subplot(1, 1, 1)
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
+colors = ['C0', 'C1', 'C3', 'C4']
 
 for key, value in plot_dict.items():
     if not value["flag"]:
@@ -86,10 +87,10 @@ for key, value in plot_dict.items():
             data3 = xr.open_dataset(nc3_files[i]).isel(time=0)
 
             temp_data = data3['temp']
-            ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
+            ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'], color=colors[i])
 
             theta_data = data3['theta']
-            ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
+            ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'], color=colors[i])
             data3.close()
 
         ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
