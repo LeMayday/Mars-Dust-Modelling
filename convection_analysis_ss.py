@@ -7,6 +7,7 @@ from movie_from_pngs import delete_files, create_movie
 from plotting import *
 import os
 import argparse
+from scipy.stats import gaussian_kde
 #import kintera
 #from snapy import MeshBlockOptions
 
@@ -117,19 +118,30 @@ for key, value in plot_dict.items():
 
     elif key == "vert_vel_top_bot":
         ax1 = value["ax1"]
-        ax1.set_title("Vz Bottom")
+        ax1.set_title("Vz Top")
         ax2 = value["ax2"]
-        ax2.set_title("Vz Top")
+        ax2.set_title("Vz Bottom")
 
-        num_bins = 50
+        bin_width = 0.5
+        # bins = 100
+        bins = np.arange(-20, 20 + bin_width, bin_width)
+        sample_pts = np.linspace(-20, 20, 100)
         for i, exp in enumerate(experiment_names):
             data2 = xr.open_dataset(nc2_files[i]).isel(time=0)
             
-            vel_data_bottom = data2['vel1'].isel(x1=0)
-            vel_data_top = data2['vel1'].isel(x1=-1)
+            vel_data_bottom = data2['vel1'].isel(x1=0).stack(x3x2=('x3','x2'))
+            vel_data_top = data2['vel1'].isel(x1=-1).stack(x3x2=('x3','x2'))
 
-            ax1.hist(vel_data_top, bins=num_bins, histtype='step', density=True)
-            ax2.hist(vel_data_bottom, bins=num_bins, histtype='step', density=True)
+            # kde_top = gaussian_kde(vel_data_top.values.T)
+            # kde_bottom = gaussian_kde(vel_data_bottom.values.T)
+
+            # ax1.plot(sample_pts, kde_top(sample_pts), color=colors[i])
+            # ax2.plot(sample_pts, kde_bottom(sample_pts), color=colors[i])
+    
+            ax1.hist(vel_data_top, bins=bins, histtype='step', density=True, linewidth=2, edgecolor=colors[i], color=colors[i], alpha=0.6)
+            ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, edgecolor=colors[i], color=colors[i], alpha=0.6)
+            ax2.sharex(ax1)
+            ax1.set_xlim([-20, 20])
             data2.close()
 
         ax1.legend(legend_labels)
