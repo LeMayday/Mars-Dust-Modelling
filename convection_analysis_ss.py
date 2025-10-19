@@ -106,7 +106,10 @@ for key, value in plot_dict.items():
             data2 = xr.open_dataset(nc2_files[i]).isel(time=0)
 
             hor_vel_data = data2['vel2']
-            ax1.plot(hor_vel_data.mean(dim=['x2', 'x3']), hor_vel_data['x1'])
+            vels = hor_vel_data.mean(dim=['x2', 'x3'])
+            if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
+                vels = -vels 
+            ax1.plot(vels, hor_vel_data['x1'], color=colors[i])
             data2.close()
 
         ax1.legend(legend_labels)
