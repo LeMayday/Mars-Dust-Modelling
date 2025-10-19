@@ -34,11 +34,16 @@ cp = 842
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-names", required=True, type=str, help="Name of the experiments to analyze as one string (e.g. ACD)")
-parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--3D", action="store_true", help="Whether to use 3D data")
+group.add_argument("--compare-with", type=str, default="", help="List of 3D data to compare with")
 args = parser.parse_args()
 experiment_names = sorted(list(args.experiment_names.upper()))
+compare_names = sorted(list(args.compare_with.upper()))
 if vars(args)['3D']:
     experiment_names = [exp_name + "_3D" for exp_name in experiment_names]
+elif len(compare_names) > 0:
+    experiment_names = experiment_names + [exp_name + "_3D" for exp_name in compare_names]
 
 nc2_files = []
 nc3_files = []
@@ -71,7 +76,6 @@ for key, value in plot_dict.items():
         value["ax1"] = fig.add_subplot(1, 1, 1)
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
-colors = ['C0', 'C1', 'C3', 'C4']
 
 for key, value in plot_dict.items():
     if not value["flag"]:
@@ -87,10 +91,10 @@ for key, value in plot_dict.items():
             data3 = xr.open_dataset(nc3_files[i]).isel(time=0)
 
             temp_data = data3['temp']
-            ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'], color=colors[i])
+            ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
 
             theta_data = data3['theta']
-            ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'], color=colors[i])
+            ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
             data3.close()
 
         ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
@@ -109,7 +113,7 @@ for key, value in plot_dict.items():
             vels = hor_vel_data.mean(dim=['x2', 'x3'])
             if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
                 vels = -vels
-            ax1.plot(vels, hor_vel_data['x1'], color=colors[i])
+            ax1.plot(vels, hor_vel_data['x1'])
             data2.close()
 
         ax1.legend(legend_labels)
@@ -137,8 +141,8 @@ for key, value in plot_dict.items():
             # ax1.plot(sample_pts, kde_top(sample_pts), color=colors[i])
             # ax2.plot(sample_pts, kde_bottom(sample_pts), color=colors[i])
     
-            ax1.hist(vel_data_top, bins=bins, histtype='step', density=True, linewidth=2, edgecolor=colors[i], color=colors[i], alpha=0.6)
-            ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, edgecolor=colors[i], color=colors[i], alpha=0.6)
+            ax1.hist(vel_data_top, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
+            ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
             ax2.sharex(ax1)
             ax1.set_xlim([-20, 20])
             data2.close()
@@ -147,7 +151,12 @@ for key, value in plot_dict.items():
         ax2.legend(legend_labels)
         fig.tight_layout()
 
-    output_file = f"{key}_steady_state_3D.png" if vars(args)['3D'] else f"{key}_steady_state.png"
+    if vars(args)['3D']:
+        output_file = f"{key}_steady_state_3D.png"
+    elif len(compare_names) > 0:
+        output_file = f"{key}_steady_state_2D_3D.png"
+    else:
+        output_file = f"{key}_steady_state.png"
     fig.savefig(output_file)
     plt.close(fig)
 
