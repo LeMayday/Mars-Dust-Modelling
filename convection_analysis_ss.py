@@ -34,12 +34,11 @@ cp = 842
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-names", required=True, type=str, help="Name of the experiments to analyze as one string (e.g. ACD)")
+parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
 args = parser.parse_args()
 experiment_names = sorted(list(args.experiment_names.upper()))
-
-ref_file, _ = get_nc_files(f"output_{experiment_names[0]}")
-ref_data = xr.open_dataset(ref_file).isel(time=0)
-X, Y, Z = np.meshgrid(ref_data['x2'], ref_data['x3'], ref_data['x1'])
+if vars(args)['3D']:
+    experiment_names = [exp_name + "_3D" for exp_name in experiment_names]
 
 nc2_files = []
 nc3_files = []
@@ -109,7 +108,7 @@ for key, value in plot_dict.items():
             hor_vel_data = data2['vel2']
             vels = hor_vel_data.mean(dim=['x2', 'x3'])
             if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
-                vels = -vels 
+                vels = -vels
             ax1.plot(vels, hor_vel_data['x1'], color=colors[i])
             data2.close()
 
@@ -148,7 +147,7 @@ for key, value in plot_dict.items():
         ax2.legend(legend_labels)
         fig.tight_layout()
 
-    output_file = f"{key}_steady_state.png"
+    output_file = f"{key}_steady_state_3D.png" if vars(args)['3D'] else f"{key}_steady_state.png"
     fig.savefig(output_file)
     plt.close(fig)
 
