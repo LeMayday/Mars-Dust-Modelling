@@ -12,7 +12,7 @@ species:
 geometry:
   type: cartesian
   bounds: {x1min: 0., x1max: 20.e3, x2min: 0., x2max: 80.e3, x3min: 0., x3max: 80.e3}
-  cells: {nx1: 128, nx2: 512, nx3: 512, nghost: 3}
+  cells: {nx1: 96, nx2: 384, nx3: 384, nghost: 3}
 
 dynamics:
   equation-of-state:
@@ -49,7 +49,7 @@ boundary-condition:
 
 integration:
   type: rk3
-  cfl: 0.9
+  cfl: 0.45
   implicit-scheme: 1
   nlim: -1
   tlim: 28800

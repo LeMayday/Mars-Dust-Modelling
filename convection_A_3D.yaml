@@ -49,7 +49,7 @@ boundary-condition:
 
 integration:
   type: rk3
-  cfl: 0.9
+  cfl: 0.45
   implicit-scheme: 0
   nlim: -1
   tlim: 28800
