@@ -7,9 +7,6 @@ from movie_from_pngs import delete_files, create_movie
 from plotting import *
 import os
 import argparse
-from scipy.stats import gaussian_kde
-#import kintera
-#from snapy import MeshBlockOptions
 
 def get_nc_files(directory):
     out2_files = []
@@ -26,10 +23,6 @@ def get_nc_files(directory):
 
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
 g = 3.73
-#MeshBlockOptions.from_yaml("convection.yaml")
-#Rd = kintera.constants.Rgas / kintera.species_weights()[0]
-#cv = kintera.species_cref_R()[0] * Rd
-#cp = cv + Rd
 cp = 842
 
 parser = argparse.ArgumentParser()
@@ -135,12 +128,6 @@ for key, value in plot_dict.items():
             vel_data_bottom = data2['vel1'].isel(x1=0).stack(x3x2=('x3','x2'))
             vel_data_top = data2['vel1'].isel(x1=-1).stack(x3x2=('x3','x2'))
 
-            # kde_top = gaussian_kde(vel_data_top.values.T)
-            # kde_bottom = gaussian_kde(vel_data_bottom.values.T)
-
-            # ax1.plot(sample_pts, kde_top(sample_pts), color=colors[i])
-            # ax2.plot(sample_pts, kde_bottom(sample_pts), color=colors[i])
-    
             ax1.hist(vel_data_top, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
             ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
             ax2.sharex(ax1)
