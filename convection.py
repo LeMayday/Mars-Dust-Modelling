@@ -116,6 +116,8 @@ top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[
 top_row_height = top_row_height.to(device)  
 
 w[interior][index.ivx] = torch.randn_like(w[interior][index.ivy])
+gpu_id = 0
+total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
 # with profile(activities=activities, record_shapes=True) as prof:
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
@@ -124,6 +126,9 @@ while not block.intg.stop(count, current_time):
         print(f"count = {count}, dt = {dt}, time = {current_time}")
         u = block_vars["hydro_u"]
         print("mass = ", u[interior][index.idn].sum())
+        current_mem = torch.cuda.memory_allocated(gpu_id) / 1024**2
+        reserved_mem = torch.cuda.memory_reserved(gpu_id) / 1024**2
+        print(f"{current_mem:.2f} allocated, {current_mem / total_mem * 100:.1f}%, {reserved_mem:.2f} reserved")
 
         ivol = thermo.compute("DY->V", (w[index.idn], w[index.icy:]))
         temp = thermo.compute("PV->T", (w[index.ipr], ivol))
