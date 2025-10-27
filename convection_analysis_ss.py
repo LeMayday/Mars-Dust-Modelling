@@ -16,10 +16,10 @@ def get_nc_files(directory):
             root, ext = os.path.splitext(filename)
             if ext.lower() == ".nc":
                 if "out2" in root:
-                    out2_file = os.path.join(directory, filename)
+                    out2_files.append(os.path.join(directory, filename))
                 elif "out3" in root:
-                    out3_file = os.path.join(directory, filename)
-    return out2_file, out3_file 
+                    out3_files.append(os.path.join(directory, filename))
+    return out2_files, out3_files
 
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
 g = 3.73
@@ -30,6 +30,7 @@ parser.add_argument("-e", "--experiment-names", required=True, type=str, help="N
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--3D", action="store_true", help="Whether to use 3D data")
 group.add_argument("--compare-with", type=str, default="", help="List of 3D data to compare with")
+parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
 args = parser.parse_args()
 experiment_names = sorted(list(args.experiment_names.upper()))
 compare_names = sorted(list(args.compare_with.upper()))
@@ -37,13 +38,26 @@ if vars(args)['3D']:
     experiment_names = [exp_name + "_3D" for exp_name in experiment_names]
 elif len(compare_names) > 0:
     experiment_names = experiment_names + [exp_name + "_3D" for exp_name in compare_names]
+num_files = args.num_file
 
-nc2_files = []
-nc3_files = []
+nc2_data_by_exp = []
+nc3_data_by_exp = []
+# average over time dimension for last n files and store in an array according to experiment
 for exp in experiment_names:
-    nc2_file, nc3_file = get_nc_files(f"output_{exp}")
-    nc2_files.append(nc2_file)
-    nc3_files.append(nc3_file)
+    nc2_files, nc3_files = get_nc_files(f"output_{exp}")
+    nc2_data = []
+    for nc2 in nc2_files[-num_files:]:
+        with xr.open_dataset(nc2) as ds:
+            nc2_data.append(ds)
+    nc2_data_concat = xr.concat(nc2_data, dim='time')
+    nc2_data_by_exp.append(nc2_data_concat.mean('time'))
+
+    nc3_data = []
+    for nc3 in nc3_files[-num_files:]:
+        with xr.open_dataset(nc3) as ds:
+            nc3_data.append(ds)
+    nc3_data_concat = xr.concat(nc3_data, dim='time')
+    nc3_data_by_exp.append(nc3_data_concat.mean('time'))
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 1, "files": []}
@@ -81,14 +95,13 @@ for key, value in plot_dict.items():
         ax2.set_title("Theta")
 
         for i, exp in enumerate(experiment_names):
-            data3 = xr.open_dataset(nc3_files[i]).isel(time=0)
+            data3 = nc3_data_by_exp[i]
 
             temp_data = data3['temp']
             ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
 
             theta_data = data3['theta']
             ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
-            data3.close()
 
         ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
         ax1.legend(legend_labels)
@@ -100,14 +113,13 @@ for key, value in plot_dict.items():
         ax1.set_title('Mean Horizontal Vel')
 
         for i, exp in enumerate(experiment_names):
-            data2 = xr.open_dataset(nc2_files[i]).isel(time=0)
+            data2 = nc2_data_by_exp[i]
 
             hor_vel_data = data2['vel2']
             vels = hor_vel_data.mean(dim=['x2', 'x3'])
             if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
                 vels = -vels
             ax1.plot(vels, hor_vel_data['x1'])
-            data2.close()
 
         ax1.legend(legend_labels)
         fig.tight_layout()
@@ -123,7 +135,7 @@ for key, value in plot_dict.items():
         bins = np.arange(-20, 20 + bin_width, bin_width)
         sample_pts = np.linspace(-20, 20, 100)
         for i, exp in enumerate(experiment_names):
-            data2 = xr.open_dataset(nc2_files[i]).isel(time=0)
+            data2 = nc2_data_by_exp[i]
             
             vel_data_bottom = data2['vel1'].isel(x1=0).stack(x3x2=('x3','x2'))
             vel_data_top = data2['vel1'].isel(x1=-1).stack(x3x2=('x3','x2'))
@@ -132,7 +144,6 @@ for key, value in plot_dict.items():
             ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
             ax2.sharex(ax1)
             ax1.set_xlim([-20, 20])
-            data2.close()
 
         ax1.legend(legend_labels)
         ax2.legend(legend_labels)
@@ -144,6 +155,6 @@ for key, value in plot_dict.items():
         output_file = f"{key}_steady_state_2D_3D.png"
     else:
         output_file = f"{key}_steady_state.png"
-    fig.savefig(output_file)
+    fig.savefig("analysis_output/" + output_file)
     plt.close(fig)
 
