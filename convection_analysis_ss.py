@@ -3,7 +3,6 @@
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
-from movie_from_pngs import delete_files, create_movie
 from plotting import *
 import os
 import argparse
@@ -60,31 +59,20 @@ for exp in experiment_names:
     nc3_data_by_exp.append(nc3_data_concat.mean('time'))
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 0, "files": []}
-plot_dict["hori_theta"] = {"flag": 0, "files": []}
-plot_dict["vert_vel_dist"] = {"flag": 1, "files": []}
-plot_dict["hori_vel"] = {"flag": 0, "files": []}
+plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
+plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
+plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
+plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
 
-# configure plot settings
+# configure plot size and axes
 for key, value in plot_dict.items():
     fig = plt.figure()
     value["fig"] = fig
-    if key == "vert_temp_theta":
-        fig.set_size_inches(12, 8)
-        value["ax1"] = fig.add_subplot(1, 2, 1)
-        value["ax2"] = fig.add_subplot(1, 2, 2)
-    if key == "hori_theta":
-        fig.set_size_inches(12, 12)
-        value["ax1"] = fig.add_subplot(3, 1, 1)
-        value["ax2"] = fig.add_subplot(3, 1, 2)
-        value["ax3"] = fig.add_subplot(3, 1, 3)
-    if key == "vert_vel_dist":
-        fig.set_size_inches(12, 20)
-        for i in range(1, 6):
-            value[f"ax{i}"] = fig.add_subplot(5, 1, i)
-    if key == "hori_vel":
-        fig.set_size_inches(12, 8)
-        value["ax1"] = fig.add_subplot(1, 1, 1)
+    subplot_array_dims = value["subplots"]
+    fig.set_size_inches(12, min(8, 4*num_subplots))
+    for i in range(1, np.prod(subplot_array_dims) + 1):
+        value[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
 
