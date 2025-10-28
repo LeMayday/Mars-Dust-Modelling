@@ -60,26 +60,30 @@ for exp in experiment_names:
     nc3_data_by_exp.append(nc3_data_concat.mean('time'))
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 1, "files": []}
-plot_dict["hori_temp_theta"] = {"flag": 0, "files": []}
-plot_dict["vert_vel_top_bot"] = {"flag": 1, "files": []}
-plot_dict["hori_vel"] = {"flag": 1, "files": []}
+plot_dict["vert_temp_theta"] = {"flag": 0, "files": []}
+plot_dict["hori_theta"] = {"flag": 1, "files": []}
+plot_dict["vert_vel_top_bot"] = {"flag": 0, "files": []}
+plot_dict["hori_vel"] = {"flag": 0, "files": []}
 
 # configure plot settings
 for key, value in plot_dict.items():
     fig = plt.figure()
-    fig.set_size_inches(12, 8)
     value["fig"] = fig
     if key == "vert_temp_theta":
+        fig.set_size_inches(12, 8)
         value["ax1"] = fig.add_subplot(1, 2, 1)
         value["ax2"] = fig.add_subplot(1, 2, 2)
-    if key == "hori_temp_theta":
-        value["ax1"] = fig.add_subplot(2, 1, 1)
-        value["ax2"] = fig.add_subplot(2, 1, 2)
+    if key == "hori_theta":
+        fig.set_size_inches(12, 12)
+        value["ax1"] = fig.add_subplot(3, 1, 1)
+        value["ax2"] = fig.add_subplot(3, 1, 2)
+        value["ax3"] = fig.add_subplot(3, 1, 3)
     if key == "vert_vel_top_bot":
+        fig.set_size_inches(12, 8)
         value["ax1"] = fig.add_subplot(2, 1, 1)
         value["ax2"] = fig.add_subplot(2, 1, 2)
     if key == "hori_vel":
+        fig.set_size_inches(12, 8)
         value["ax1"] = fig.add_subplot(1, 1, 1)
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
@@ -147,6 +151,39 @@ for key, value in plot_dict.items():
 
         ax1.legend(legend_labels)
         ax2.legend(legend_labels)
+        fig.tight_layout()
+
+    elif key == "hori_theta":
+        ax1 = value["ax1"]
+        ax1.set_title("Theta Top 1/4")
+        ax2 = value["ax2"]
+        ax2.set_title("Theta Middle")
+        ax3 = value["ax3"]
+        ax3.set_title("Theta Bottom 1/4")
+
+        for i, exp in enumerate(experiment_names):
+            theta_data_exp = [[], [], []]
+            time = []
+            _, nc3_files = get_nc_files(f"output_{exp}")
+            for j, nc3 in enumerate(nc3_files):
+                with xr.open_dataset(nc3).isel(time=0) as data3:
+                    time.append(float(data3.time))
+                    theta_data = data3['theta']
+                    mean_theta = theta_data.mean(dim=['x2', 'x3'])
+                    nx1 = data3.x1.size
+                    theta_data_exp[0].append(mean_theta.isel(x1=int(nx1*3/4)))
+                    theta_data_exp[1].append(mean_theta.isel(x1=int(nx1/2)))
+                    theta_data_exp[2].append(mean_theta.isel(x1=int(nx1/4)))
+
+            ax1.plot(time, theta_data_exp[0])
+            ax2.plot(time, theta_data_exp[1])
+            ax3.plot(time, theta_data_exp[2])
+            ax2.sharex(ax1)
+            ax3.sharex(ax1)
+
+        ax1.legend(legend_labels)
+        ax2.legend(legend_labels)
+        ax3.legend(legend_labels)
         fig.tight_layout()
 
     if vars(args)['3D']:
