@@ -61,8 +61,8 @@ for exp in experiment_names:
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 0, "files": []}
-plot_dict["hori_theta"] = {"flag": 1, "files": []}
-plot_dict["vert_vel_top_bot"] = {"flag": 0, "files": []}
+plot_dict["hori_theta"] = {"flag": 0, "files": []}
+plot_dict["vert_vel_dist"] = {"flag": 1, "files": []}
 plot_dict["hori_vel"] = {"flag": 0, "files": []}
 
 # configure plot settings
@@ -78,10 +78,10 @@ for key, value in plot_dict.items():
         value["ax1"] = fig.add_subplot(3, 1, 1)
         value["ax2"] = fig.add_subplot(3, 1, 2)
         value["ax3"] = fig.add_subplot(3, 1, 3)
-    if key == "vert_vel_top_bot":
-        fig.set_size_inches(12, 8)
-        value["ax1"] = fig.add_subplot(2, 1, 1)
-        value["ax2"] = fig.add_subplot(2, 1, 2)
+    if key == "vert_vel_dist":
+        fig.set_size_inches(12, 20)
+        for i in range(1, 6):
+            value[f"ax{i}"] = fig.add_subplot(5, 1, i)
     if key == "hori_vel":
         fig.set_size_inches(12, 8)
         value["ax1"] = fig.add_subplot(1, 1, 1)
@@ -128,11 +128,9 @@ for key, value in plot_dict.items():
         ax1.legend(legend_labels)
         fig.tight_layout()
 
-    elif key == "vert_vel_top_bot":
-        ax1 = value["ax1"]
-        ax1.set_title("Vz Top")
-        ax2 = value["ax2"]
-        ax2.set_title("Vz Bottom")
+    elif key == "vert_vel_dist":
+        titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
+        axes = [value[f"ax{i}"] for i in range(1, 6)]
 
         bin_width = 0.5
         # bins = 100
@@ -140,17 +138,15 @@ for key, value in plot_dict.items():
         sample_pts = np.linspace(-20, 20, 100)
         for i, exp in enumerate(experiment_names):
             data2 = nc2_data_by_exp[i]
-            
-            vel_data_bottom = data2['vel1'].isel(x1=0).stack(x3x2=('x3','x2'))
-            vel_data_top = data2['vel1'].isel(x1=-1).stack(x3x2=('x3','x2'))
+            nx1 = data2.x1.size
+            idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
+            for i in range(len(axes)):
+                axes[i].hist(data2['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
+                if i > 0:
+                    axes[i].sharex(axes[0])
+                axes[i].legend(legend_labels)
+            axes[0].set_xlim([-20, 20])
 
-            ax1.hist(vel_data_top, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
-            ax2.hist(vel_data_bottom, bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
-            ax2.sharex(ax1)
-            ax1.set_xlim([-20, 20])
-
-        ax1.legend(legend_labels)
-        ax2.legend(legend_labels)
         fig.tight_layout()
 
     elif key == "hori_theta":
