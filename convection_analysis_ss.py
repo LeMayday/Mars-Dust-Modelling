@@ -41,6 +41,13 @@ elif len(compare_names) > 0:
     experiment_names = experiment_names + [exp_name + "_3D" for exp_name in compare_names]
 num_files = args.num_file
 
+# make plot output directory if it doesn't already exist
+save_directory = f"analysis_output"
+try:
+    os.mkdir(save_directory)
+except FileExistsError:
+    pass
+
 nc2_data_by_exp = []
 nc3_data_by_exp = []
 # average over time dimension for last n files and store in an array according to experiment
@@ -196,6 +203,6 @@ for key, value in plot_dict.items():
         output_file = f"{key}_steady_state_2D_3D.png"
     else:
         output_file = f"{key}_steady_state.png"
-    fig.savefig("analysis_output/" + output_file)
+    fig.savefig(f"{save_directory}/{output_file}")
     plt.close(fig)
 
