@@ -23,6 +23,8 @@ def get_nc_files(directory):
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
 g = 3.73
 cp = 842
+s0 = 580;           # W / m^2
+q_dot = s0 / 4      # heat flux
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-names", required=True, type=str, help="Name of the experiments to analyze as one string (e.g. ACD)")
@@ -59,10 +61,10 @@ for exp in experiment_names:
     nc3_data_by_exp.append(nc3_data_concat.mean('time'))
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
+plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
+plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
-plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["hori_vel"] = {"flag": 1, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
 
 # configure plot size and axes
@@ -70,7 +72,7 @@ for key, value in plot_dict.items():
     fig = plt.figure()
     value["fig"] = fig
     subplot_array_dims = value["subplots"]
-    fig.set_size_inches(12, min(8, 4*num_subplots))
+    fig.set_size_inches(12, max(8, 4*subplot_array_dims[0]))
     for i in range(1, np.prod(subplot_array_dims) + 1):
         value[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
@@ -168,6 +170,24 @@ for key, value in plot_dict.items():
         ax1.legend(legend_labels)
         ax2.legend(legend_labels)
         ax3.legend(legend_labels)
+        fig.tight_layout()
+
+    elif key == "gravity_wave":
+        ax1 = value["ax1"]
+        ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
+        
+        for i, exp in enumerate(experiment_names):
+            data2 = nc2_data_by_exp[i]
+            
+            rho_data = data2['rho'].mean(dim=['x2', 'x3'])
+            drho_dz = rho_data.differentiate('x1')
+            N_sq = -g / rho_data * drho_dz
+            
+            val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
+
+            ax1.plot(val, rho_data['x1'])
+
+        ax1.legend(legend_labels)
         fig.tight_layout()
 
     if vars(args)['3D']:
