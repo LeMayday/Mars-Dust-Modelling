@@ -13,21 +13,21 @@ from snapy import (
 from torch.profiler import profile, record_function, ProfilerActivity
 import os
 import argparse
+import re
+import xarray as xr
 
 torch.set_default_dtype(torch.float64)
 
 torch.manual_seed(42)
-# experiment_name = input("Experiment Name:\n")
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-name", required=True, help="Name of the experiment")
 parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
+parser.add_argument("-c", "--continue-from", type=str, nargs=2, help="Continue integrating from a file")
 args = parser.parse_args()
 experiment_name = args.experiment_name
 # 3D is not a valid python identifier, but it can be used as a dict key
 if vars(args)['3D']:
     experiment_name = experiment_name + "_3D"
-# torch.set_num_threads(1)
-# torch.set_num_interop_threads(1)
 
 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/mars-atmosphere-equation-metric/
 # https://pds-atmospheres.nmsu.edu/education_and_outreach/encyclopedia/gas_constant.htm
@@ -63,8 +63,6 @@ Rd = kintera.constants.Rgas / kintera.species_weights()[0]
 cv = kintera.species_cref_R()[0] * Rd
 cp = cv + Rd
 
-# set initial condition
-
 x3v, x2v, x1v = torch.meshgrid(
     coord.buffer("x3v"), coord.buffer("x2v"), coord.buffer("x1v"), indexing="ij"
 )   # x3v is x, x2v is y, x1v is z
@@ -75,14 +73,17 @@ nc2 = coord.buffer("x2v").shape[0]
 nc1 = coord.buffer("x1v").shape[0]
 nvar = 5
 
+# make output
+directory = f"output_{experiment_name}"
+try:
+    os.mkdir(directory)
+except FileExistsError:
+    pass
+out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(2).variable("prim"))
+out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(3).variable("uov"))
+
+# set initial condition
 w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
-
-# temp = Ts - grav * x1v / cp       # adiabatic condition
-temp = torch.full_like(x1v, Ts)     # isothermal condition
-
-# w[index.ipr] = p0 * torch.pow(temp / Ts, cp / Rd)
-w[index.ipr] = p0 * torch.exp(-grav * x1v / Rd / Ts)        # isothermal pressure
-w[index.idn] = w[index.ipr] / (Rd * temp)                   # ideal gas law
 
 block_vars = {}
 block_vars["hydro_w"] = w
@@ -90,17 +91,42 @@ block_vars = block.initialize(block_vars)
 block_vars["scalar_x"] = torch.tensor(0.)
 block_vars["scalar_v"] = torch.tensor(0.)
 
-# make output
-directory = f"output_{experiment_name}"
-try:
-    os.mkdir(directory)
-except FileExistsError:
-    pass
-out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection").fid(2).variable("prim"))
-out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection").fid(3).variable("uov"))
+# determine how to initialize values
+if args.continue_from is not None:
+    continue_file2 = args.continue_from[0]
+    continue_file3 = args.continue_from[1]
+    # from Google: screens leading zeros and searches for number starting with leading digit or single zero
+    pattern = "(?:0*)([1-9]\d*|0)"
+    match = re.search(pattern, continue_file2)
+    # check that both input files are at the same step (assumes they are from the same run)
+    match_check = re.search(pattern, continue_file3)
+    if (file_num := int(match.group(1))) != int(match_check.group(1)):
+        exit("File numbers do not match. Output will not make sense.")
+    # have file naming convention start where given file left off
+    for i in range(file_num):
+        for out in [out2, out3]:
+            out.increment_file_number()
+    
+    with xr.open_dataset(continue_file2).isel(time=0) as data2:
+        w[interior][index.idn] = torch.from_numpy(data.rho.values)
+        press_continue = torch.from_numpy(data.press.values)
+        vel1_continue = 
+    data3 = xr.open_dataset(continue_file3)
 
-block.set_uov("temp", temp)
-block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
+
+
+else:
+    # temp = Ts - grav * x1v / cp       # adiabatic condition
+    temp = torch.full_like(x1v, Ts)     # isothermal condition
+
+    # w[index.ipr] = p0 * torch.pow(temp / Ts, cp / Rd)
+    w[index.ipr] = p0 * torch.exp(-grav * x1v / Rd / Ts)        # isothermal pressure
+    w[index.idn] = w[index.ipr] / (Rd * temp)                   # ideal gas law
+
+    block.set_uov("temp", temp)
+    block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
+
+
 
 activities = [ProfilerActivity.CPU]
 
