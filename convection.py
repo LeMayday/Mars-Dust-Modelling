@@ -126,6 +126,7 @@ else:
     block.set_uov("temp", temp)
     block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
 
+    w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
 
 
 activities = [ProfilerActivity.CPU]
@@ -141,7 +142,6 @@ bottom_row_height = bottom_row_height.to(device)
 top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
 top_row_height = top_row_height.to(device)  
 
-w[interior][index.ivx] = torch.randn_like(w[interior][index.ivy])
 gpu_id = 0
 total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
 # with profile(activities=activities, record_shapes=True) as prof:
