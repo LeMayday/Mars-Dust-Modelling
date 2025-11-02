@@ -106,11 +106,10 @@ if args.continue_from is not None:
     for i in range(file_num):
         for out in [out2, out3]:
             out.increment_file_number()
-    
+
     with xr.open_dataset(continue_file2).isel(time=0) as data2:
         w[interior][index.idn] = torch.from_numpy(data.rho.values)
         press_continue = torch.from_numpy(data.press.values)
-        vel1_continue = 
     data3 = xr.open_dataset(continue_file3)
 
 
