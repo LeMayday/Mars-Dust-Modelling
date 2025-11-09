@@ -35,6 +35,10 @@ def save_nc_as_pt(input_fname, output_fname):
 
     __save_tensors(data, output_fname)
 
+def get_nc_time(input_fname):
+    nc = Dataset(input_fname, 'r')
+    return float(nc.variables["time"][:])
+
 def load_tensors(filename: str) -> Dict[str, torch.Tensor]:
     '''
     Adapted from https://github.dev/chengcli/snapy/blob/cli/tmp_add_restart/examples/shock.cpp
