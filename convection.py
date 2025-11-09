@@ -14,6 +14,7 @@ import os
 import argparse
 import re
 import xarray as xr
+import nc2pt
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
@@ -23,7 +24,7 @@ device = torch.device("cuda:0")
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-name", required=True, help="Name of the experiment")
 parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
-parser.add_argument("-c", "--continue-from", type=str, nargs=2, help="Continue integrating from a file")
+parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
 args = parser.parse_args()
 experiment_name = args.experiment_name
 # 3D is not a valid python identifier, but it can be used as a dict key
@@ -82,39 +83,32 @@ except FileExistsError:
 out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(2).variable("prim"))
 out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(3).variable("uov"))
 
-# set initial condition
 w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
-
-block_vars = {}
-block_vars["hydro_w"] = w
-block_vars = block.initialize(block_vars)
-block_vars["scalar_x"] = torch.tensor(0.)
-block_vars["scalar_v"] = torch.tensor(0.)
-
 # determine how to initialize values
 if args.continue_from is not None:
-    continue_file2 = args.continue_from[0]
-    continue_file3 = args.continue_from[1]
+    continue_file = args.continue_from
     # from Google: screens leading zeros and searches for number starting with leading digit or single zero
     pattern = "(?:0*)([1-9]\d*|0)"
-    match = re.search(pattern, continue_file2)
-    # check that both input files are at the same step (assumes they are from the same run)
-    match_check = re.search(pattern, continue_file3)
-    if (file_num := int(match.group(1))) != int(match_check.group(1)):
-        exit("File numbers do not match. Output will not make sense.")
+    match = re.search(pattern, continue_file)
+    file_num = int(match.group(1))
     # have file naming convention start where given file left off
     for i in range(file_num):
         for out in [out2, out3]:
             out.increment_file_number()
 
-    with xr.open_dataset(continue_file2).isel(time=0) as data2:
-        w[interior][index.idn] = torch.from_numpy(data.rho.values)
-        press_continue = torch.from_numpy(data.press.values)
-    data3 = xr.open_dataset(continue_file3)
+    name = "data2.pt"
+    nc2pt.save_nc_as_pt(continue_file, name)
+    data = nc2pt.load_tensors(name)
+    os.remove(name)
 
+    w[interior][index.idn] = data["rho"]
+    w[interior][index.ivx] = data["vel1"]
+    w[interior][index.ivy] = data["vel2"]
+    w[interior][index.ivz] = data["vel3"]
+    w[interior][index.ipr] = data["press"]
 
-# normal intialization if no continuation
 else:
+    # normal intialization if no continuation
     # temp = Ts - grav * x1v / cp       # adiabatic condition
     temp = torch.full_like(x1v, Ts)     # isothermal condition
 
@@ -127,6 +121,12 @@ else:
 
     # random initial velocity
     w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
+
+block_vars = {}
+block_vars["hydro_w"] = w
+block_vars = block.initialize(block_vars)
+block_vars["scalar_x"] = torch.tensor(0.)
+block_vars["scalar_v"] = torch.tensor(0.)
 
 # dz for heat flux
 bottom_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][0])[interior[1:3]]
