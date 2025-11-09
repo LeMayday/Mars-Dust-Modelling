@@ -135,18 +135,28 @@ for key, value in plot_dict.items():
 
         bin_width = 0.5
         # bins = 100
-        bins = np.arange(-20, 20 + bin_width, bin_width)
-        sample_pts = np.linspace(-20, 20, 100)
+        # bins = np.arange(-100, 100 + bin_width, bin_width)
+        # sample_pts = np.linspace(-20, 20, 100)
         for i, exp in enumerate(experiment_names):
             data2 = nc2_data_by_exp[i]
             nx1 = data2.x1.size
             idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
+            data_min = 0
+            data_max = 0
             for i in range(len(axes)):
+                vel_data = data2['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2'))
+                bin_min = np.floor(vel_data.min() / bin_width) * bin_width
+                bin_max = np.floor(vel_data.max() / bin_width) * bin_width
+                bins = np.arange(bin_min, bin_max + bin_width, bin_width)
+                if bin_min < data_min:
+                    data_min = bin_min
+                if bin_max > data_max:
+                    data_max = bin_max
                 axes[i].hist(data2['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
-                if i > 0:
-                    axes[i].sharex(axes[0])
+                # if i > 0:
+                #     axes[i].sharex(axes[0])
                 axes[i].legend(legend_labels)
-            axes[0].set_xlim([-20, 20])
+            axes[0].set_xlim([data_min, data_max])
 
         fig.tight_layout()
 
