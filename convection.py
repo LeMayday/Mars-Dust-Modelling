@@ -10,7 +10,6 @@ from snapy import (
         OutputOptions,
         NetcdfOutput
         )
-from torch.profiler import profile, record_function, ProfilerActivity
 import os
 import argparse
 import re
@@ -128,7 +127,6 @@ else:
     w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
 
 
-activities = [ProfilerActivity.CPU]
 
 # integration
 count = 0
@@ -143,7 +141,6 @@ top_row_height = top_row_height.to(device)
 
 gpu_id = 0
 total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
-# with profile(activities=activities, record_shapes=True) as prof:
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
 
@@ -178,5 +175,3 @@ while not block.intg.stop(count, current_time):
     current_time += dt
 
 print("elapsed time = ", time.time() - start_time)
-# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-# print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
