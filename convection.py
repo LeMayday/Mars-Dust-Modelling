@@ -1,6 +1,8 @@
 import torch
 import math
 import time
+# IMPORTANT!! importing nc2pt after snapy causes a seg fault (for some reason)
+import nc2pt
 import kintera
 import snapy
 from snapy import (
@@ -13,8 +15,6 @@ from snapy import (
 import os
 import argparse
 import re
-import xarray as xr
-import nc2pt
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
@@ -87,12 +87,16 @@ w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primiti
 # determine how to initialize values
 if args.continue_from is not None:
     continue_file = args.continue_from
+    print(f"Continuing from {continue_file}")
     # from Google: screens leading zeros and searches for number starting with leading digit or single zero
-    pattern = "(?:0*)([1-9]\d*|0)"
+    pattern = r"\.(?:0*)([1-9]\d*|0)\.nc$"
     match = re.search(pattern, continue_file)
     file_num = int(match.group(1))
+    print(file_num)
     # have file naming convention start where given file left off
-    for i in range(file_num):
+    # note that filenumber is incremented again in the integration step
+    # the first file from continuation will be the same as the file used to continue
+    for i in range(file_num - 1):
         for out in [out2, out3]:
             out.increment_file_number()
 
@@ -106,6 +110,8 @@ if args.continue_from is not None:
     w[interior][index.ivy] = data["vel2"]
     w[interior][index.ivz] = data["vel3"]
     w[interior][index.ipr] = data["press"]
+
+    integration_start_time = nc2pt.get_nc_time(continue_file)
 
 else:
     # normal intialization if no continuation
@@ -121,6 +127,7 @@ else:
 
     # random initial velocity
     w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
+    integration_start_time = 0.0
 
 block_vars = {}
 block_vars["hydro_w"] = w
@@ -141,8 +148,10 @@ total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
 # integration
 count = 0
 start_time = time.time()
-current_time = 0.0
-while not block.intg.stop(count, current_time):
+current_time = integration_start_time
+# if continuing, integration should pretend as though it starts at 0
+# this should also work for cold start, since integration_start_time will be 0
+while not block.intg.stop(count, current_time - integration_start_time):
     dt = block.max_time_step(block_vars)
 
     if count % 1000 == 0:
