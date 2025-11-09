@@ -3,8 +3,11 @@
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import os
 import argparse
+from typing import List
 
 def get_nc_files(directory):
     out2_files = []
@@ -47,7 +50,8 @@ try:
 except FileExistsError:
     pass
 
-nc2_data_by_exp = []
+print("Loading data...")
+nc2_data_by_exp: List[xr.Dataset] = []
 nc3_data_by_exp = []
 # average over time dimension for last n files and store in an array according to experiment
 for exp in experiment_names:
@@ -74,6 +78,7 @@ plot_dict["hori_vel"] = {"flag": 1, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
 
 # configure plot size and axes
+print("Preparing plots...")
 for key, value in plot_dict.items():
     fig = plt.figure()
     value["fig"] = fig
@@ -87,11 +92,11 @@ legend_labels = ["Experiment " + exp for exp in experiment_names]
 for key, value in plot_dict.items():
     if not value["flag"]:
         continue
-    fig = value["fig"]
+    fig: Figure = value["fig"]
     if key == "vert_temp_theta":
-        ax1 = value["ax1"]
+        ax1: Axes = value["ax1"]
         ax1.set_title("Temp")
-        ax2 = value["ax2"]
+        ax2: Axes = value["ax2"]
         ax2.set_title("Theta")
 
         for i, exp in enumerate(experiment_names):
@@ -109,7 +114,7 @@ for key, value in plot_dict.items():
         fig.tight_layout()
 
     elif key == "hori_vel":
-        ax1 = value["ax1"]
+        ax1: Axes = value["ax1"]
         ax1.set_title('Mean Horizontal Vel')
 
         for i, exp in enumerate(experiment_names):
@@ -126,7 +131,7 @@ for key, value in plot_dict.items():
 
     elif key == "vert_vel_dist":
         titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
-        axes = [value[f"ax{i}"] for i in range(1, 6)]
+        axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 6)]
 
         bin_width = 0.5
         # bins = 100
@@ -146,11 +151,11 @@ for key, value in plot_dict.items():
         fig.tight_layout()
 
     elif key == "hori_theta":
-        ax1 = value["ax1"]
+        ax1: Axes = value["ax1"]
         ax1.set_title("Theta Top 1/4")
-        ax2 = value["ax2"]
+        ax2: Axes = value["ax2"]
         ax2.set_title("Theta Middle")
-        ax3 = value["ax3"]
+        ax3: Axes = value["ax3"]
         ax3.set_title("Theta Bottom 1/4")
 
         for i, exp in enumerate(experiment_names):
@@ -179,7 +184,7 @@ for key, value in plot_dict.items():
         fig.tight_layout()
 
     elif key == "gravity_wave":
-        ax1 = value["ax1"]
+        ax1: Axes = value["ax1"]
         ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
         
         for i, exp in enumerate(experiment_names):
