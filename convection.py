@@ -16,8 +16,10 @@ import re
 import xarray as xr
 
 torch.set_default_dtype(torch.float64)
-
 torch.manual_seed(42)
+device = torch.device("cuda:0")
+
+# command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-name", required=True, help="Name of the experiment")
 parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
@@ -28,6 +30,7 @@ experiment_name = args.experiment_name
 if vars(args)['3D']:
     experiment_name = experiment_name + "_3D"
 
+# assign some key values
 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/mars-atmosphere-equation-metric/
 # https://pds-atmospheres.nmsu.edu/education_and_outreach/encyclopedia/gas_constant.htm
 # put these values here and / or in yaml file -- no, these values have priority?
@@ -41,9 +44,6 @@ s0 = 580;           # W / m^2
 # Teq = (s0 / o / 4) ** (1/4)
 q_dot = s0 / 4      # heat flux
 
-# device
-device = torch.device("cuda:0")
-
 # set hydrodynamic options
 print("Reading input file: " + f"convection_{experiment_name}.yaml")
 op = MeshBlockOptions.from_yaml(f"convection_{experiment_name}.yaml")
@@ -51,6 +51,7 @@ op = MeshBlockOptions.from_yaml(f"convection_{experiment_name}.yaml")
 # initialize block
 block = MeshBlock(op)
 block.to(device)
+interior = block.part((0, 0, 0))
 
 # get handles to modules
 coord = block.hydro.module("coord")
@@ -112,7 +113,7 @@ if args.continue_from is not None:
     data3 = xr.open_dataset(continue_file3)
 
 
-
+# normal intialization if no continuation
 else:
     # temp = Ts - grav * x1v / cp       # adiabatic condition
     temp = torch.full_like(x1v, Ts)     # isothermal condition
@@ -124,23 +125,23 @@ else:
     block.set_uov("temp", temp)
     block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
 
+    # random initial velocity
     w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
 
-
-
-# integration
-count = 0
-start_time = time.time()
-interior = block.part((0, 0, 0))
-current_time = 0.0
-
+# dz for heat flux
 bottom_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][0])[interior[1:3]]
 bottom_row_height = bottom_row_height.to(device)
 top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
 top_row_height = top_row_height.to(device)  
 
+# profiling info
 gpu_id = 0
 total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
+
+# integration
+count = 0
+start_time = time.time()
+current_time = 0.0
 while not block.intg.stop(count, current_time):
     dt = block.max_time_step(block_vars)
 
