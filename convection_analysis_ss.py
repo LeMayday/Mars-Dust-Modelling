@@ -199,10 +199,14 @@ for key, value in plot_dict.items():
         
         for i, exp in enumerate(experiment_names):
             data2 = nc2_data_by_exp[i]
+            data3 = nc3_data_by_exp[i]
             
             rho_data = data2['rho'].mean(dim=['x2', 'x3'])
-            drho_dz = rho_data.differentiate('x1')
-            N_sq = -g / rho_data * drho_dz
+            theta_data = data3['theta'].mean(dim=['x2', 'x3'])
+            dtheta_dz = theta_data.differentiate('x1')
+            # drho_dz = rho_data.differentiate('x1')
+            # N_sq = -g / rho_data * drho_dz
+            N_sq = g / theta_data * dtheta_dz
             
             val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
 
