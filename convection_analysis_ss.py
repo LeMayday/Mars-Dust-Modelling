@@ -66,9 +66,9 @@ except FileExistsError:
     pass
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
+plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
+plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
+plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
 
@@ -167,6 +167,7 @@ for exp in experiment_names:
                 val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
 
                 ax1.plot(val, rho_data['x1'])
+                ax1.set_xlim([0, 50E3])
 
                 ax1.legend(legend_labels)
                 fig.tight_layout()
