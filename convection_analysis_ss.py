@@ -22,6 +22,21 @@ def get_nc_files(directory):
                     out3_files.append(os.path.join(directory, filename))
     return out2_files, out3_files
 
+def averaged_exp_data(exp_name: str, num_files: int):
+    nc2_files, nc3_files = get_nc_files(f"output_{exp_name}")
+    nc2_data = []
+    for nc2 in nc2_files[-num_files:]:
+        with xr.open_dataset(nc2) as ds:
+            nc2_data.append(ds)
+    nc2_data_concat: xr.Dataset = xr.concat(nc2_data, dim='time')
+
+    nc3_data = []
+    for nc3 in nc3_files[-num_files:]:
+        with xr.open_dataset(nc3) as ds:
+            nc3_data.append(ds)
+    nc3_data_concat: xr.Dataset = xr.concat(nc3_data, dim='time')
+    return nc2_data_concat.mean('time'), nc3_data_concat.mean('time')
+
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
 g = 3.73
 cp = 842
@@ -52,29 +67,18 @@ except FileExistsError:
 
 print("Loading data...")
 nc2_data_by_exp: List[xr.Dataset] = []
-nc3_data_by_exp = []
+nc3_data_by_exp: List[xr.Dataset] = []
 # average over time dimension for last n files and store in an array according to experiment
 for exp in experiment_names:
-    nc2_files, nc3_files = get_nc_files(f"output_{exp}")
-    nc2_data = []
-    for nc2 in nc2_files[-num_files:]:
-        with xr.open_dataset(nc2) as ds:
-            nc2_data.append(ds)
-    nc2_data_concat = xr.concat(nc2_data, dim='time')
-    nc2_data_by_exp.append(nc2_data_concat.mean('time'))
-
-    nc3_data = []
-    for nc3 in nc3_files[-num_files:]:
-        with xr.open_dataset(nc3) as ds:
-            nc3_data.append(ds)
-    nc3_data_concat = xr.concat(nc3_data, dim='time')
-    nc3_data_by_exp.append(nc3_data_concat.mean('time'))
+    avg_nc2_data, avg_nc3_data = averaged_exp_data(exp, num_files)
+    nc2_data_by_exp.append(avg_nc2_data)
+    nc3_data_by_exp.append(avg_nc3_data)
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
-plot_dict["hori_vel"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
 
 # configure plot size and axes
