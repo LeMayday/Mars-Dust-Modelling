@@ -154,7 +154,6 @@ for i, exp in enumerate(experiment_names):
                     #     axes[i].sharex(axes[0])
                     axes[i].legend(legend_labels)
                 axes[0].set_xlim([data_min, data_max])
-
                 fig.tight_layout()
 
             case "gravity_wave":
@@ -167,7 +166,6 @@ for i, exp in enumerate(experiment_names):
                 # drho_dz = rho_data.differentiate('x1')
                 # N_sq = -g / rho_data * drho_dz
                 N_sq = g / theta_data * dtheta_dz
-                
                 val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
 
                 ax1.plot(val, rho_data['x1'])
@@ -231,7 +229,6 @@ for key, value in plot_dict.items():
     if not value["flag"]:
         continue
     fig: Figure = value["fig"]
-    
     if vars(args)['3D']:
         output_file = f"{key}_steady_state_3D.png"
     elif len(compare_names) > 0:
