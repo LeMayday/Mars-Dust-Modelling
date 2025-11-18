@@ -66,7 +66,7 @@ except FileExistsError:
     pass
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
+plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
@@ -85,7 +85,8 @@ for key, value in plot_dict.items():
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
 
-for exp in experiment_names:
+last = len(experiment_names) - 1
+for i, exp in enumerate(experiment_names):
     # outer loop is experiment so only one set of data is loaded at a time
     print(f"Loading data from experiment {exp} ...")
     nc2_data, nc3_data = averaged_exp_data(exp, num_files)
@@ -107,7 +108,9 @@ for exp in experiment_names:
                 theta_data = nc3_data['theta']
                 ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
 
-                ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
+                if i == last:
+                    # plot comparison line at very end
+                    ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
                 ax1.legend(legend_labels)
                 ax2.legend(legend_labels)
                 fig.tight_layout()
@@ -185,7 +188,8 @@ for exp in experiment_names:
                 mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
 
                 ax1.plot(mean_KE_flux, mean_KE_flux['x1'])
-                ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k--')
+                if i == last:
+                    ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k--')
 
                 ax1.legend(legend_labels)
                 fig.tight_layout()
