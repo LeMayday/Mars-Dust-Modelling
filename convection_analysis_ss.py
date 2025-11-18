@@ -70,7 +70,8 @@ plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
 
 # configure plot size and axes
 print("Preparing plots...")
@@ -168,6 +169,23 @@ for exp in experiment_names:
 
                 ax1.plot(val, rho_data['x1'])
                 ax1.set_xlim([0, 50E3])
+
+                ax1.legend(legend_labels)
+                fig.tight_layout()
+
+            case "KE_flux":
+                ax1: Axes = value["ax1"]
+
+                rho = nc2_data['rho']
+                u = nc2_data['vel3']
+                v = nc2_data['vel2']
+                w = nc2_data['vel1']
+
+                KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
+                mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
+
+                ax1.plot(mean_KE_flux, mean_KE_flux['x1'])
+                ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k--')
 
                 ax1.legend(legend_labels)
                 fig.tight_layout()
