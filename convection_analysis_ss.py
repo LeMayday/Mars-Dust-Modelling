@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import os
 import argparse
-from typing import List
+from typing import List, Tuple
 
 def get_nc_files(directory):
     out2_files = []
@@ -22,7 +22,7 @@ def get_nc_files(directory):
                     out3_files.append(os.path.join(directory, filename))
     return out2_files, out3_files
 
-def averaged_exp_data(exp_name: str, num_files: int):
+def averaged_exp_data(exp_name: str, num_files: int) -> Tuple[xr.Dataset, xr.Dataset]:
     nc2_files, nc3_files = get_nc_files(f"output_{exp_name}")
     nc2_data = []
     for nc2 in nc2_files[-num_files:]:
@@ -65,15 +65,6 @@ try:
 except FileExistsError:
     pass
 
-print("Loading data...")
-nc2_data_by_exp: List[xr.Dataset] = []
-nc3_data_by_exp: List[xr.Dataset] = []
-# average over time dimension for last n files and store in an array according to experiment
-for exp in experiment_names:
-    avg_nc2_data, avg_nc3_data = averaged_exp_data(exp, num_files)
-    nc2_data_by_exp.append(avg_nc2_data)
-    nc3_data_by_exp.append(avg_nc3_data)
-
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
@@ -93,132 +84,131 @@ for key, value in plot_dict.items():
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
 
+for exp in experiment_names:
+    # outer loop is experiment so only one set of data is loaded at a time
+    print(f"Loading data from experiment {exp} ...")
+    nc2_data, nc3_data = averaged_exp_data(exp, num_files)
+    for key, value in plot_dict.items():
+        # inner loop is which experiments need info to be analyzed
+        if not value["flag"]:
+            continue
+        fig: Figure = value["fig"]
+        match key:
+            case "vert_temp_theta":
+                ax1: Axes = value["ax1"]
+                ax1.set_title("Temp")
+                ax2: Axes = value["ax2"]
+                ax2.set_title("Theta")
+
+                temp_data = nc3_data['temp']
+                ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
+
+                theta_data = nc3_data['theta']
+                ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
+
+                ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
+                ax1.legend(legend_labels)
+                ax2.legend(legend_labels)
+                fig.tight_layout()
+
+            case "hori_vel":
+                ax1: Axes = value["ax1"]
+                ax1.set_title('Mean Horizontal Vel')
+
+                hor_vel_data = nc2_data['vel2']
+                vels = hor_vel_data.mean(dim=['x2', 'x3'])
+                if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
+                    vels = -vels
+                ax1.plot(vels, hor_vel_data['x1'])
+
+                ax1.legend(legend_labels)
+                fig.tight_layout()
+
+            case "vert_vel_dist":
+                titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
+                axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 6)]
+
+                bin_width = 0.5
+                # bins = 100
+                # bins = np.arange(-100, 100 + bin_width, bin_width)
+                # sample_pts = np.linspace(-20, 20, 100)
+                nx1 = nc2_data.x1.size
+                idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
+                data_min = 0
+                data_max = 0
+                for i in range(len(axes)):
+                    vel_data = nc2_data['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2'))
+                    bin_min = np.floor(vel_data.min() / bin_width) * bin_width
+                    bin_max = np.floor(vel_data.max() / bin_width) * bin_width
+                    bins = np.arange(bin_min, bin_max + bin_width, bin_width)
+                    if bin_min < data_min:
+                        data_min = bin_min
+                    if bin_max > data_max:
+                        data_max = bin_max
+                    axes[i].hist(nc2_data['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
+                    # if i > 0:
+                    #     axes[i].sharex(axes[0])
+                    axes[i].legend(legend_labels)
+                axes[0].set_xlim([data_min, data_max])
+
+                fig.tight_layout()
+
+            case "gravity_wave":
+                ax1: Axes = value["ax1"]
+                ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
+                    
+                rho_data = nc2_data['rho'].mean(dim=['x2', 'x3'])
+                theta_data = nc3_data['theta'].mean(dim=['x2', 'x3'])
+                dtheta_dz = theta_data.differentiate('x1')
+                # drho_dz = rho_data.differentiate('x1')
+                # N_sq = -g / rho_data * drho_dz
+                N_sq = g / theta_data * dtheta_dz
+                
+                val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
+
+                ax1.plot(val, rho_data['x1'])
+
+                ax1.legend(legend_labels)
+                fig.tight_layout()
+
+# handle time series data separately
+if (value := plot_dict["hori_theta"])["flag"]:
+    print("Loading time series...")
+    ax1: Axes = value["ax1"]
+    ax1.set_title("Theta Top 1/4")
+    ax2: Axes = value["ax2"]
+    ax2.set_title("Theta Middle")
+    ax3: Axes = value["ax3"]
+    ax3.set_title("Theta Bottom 1/4")
+
+    for i, exp in enumerate(experiment_names):
+        theta_data_exp = [[], [], []]
+        time = []
+        _, nc3_files = get_nc_files(f"output_{exp}")
+        for j, nc3 in enumerate(nc3_files):
+            with xr.open_dataset(nc3).isel(time=0) as data3:
+                time.append(float(data3.time))
+                theta_data = data3['theta']
+                mean_theta = theta_data.mean(dim=['x2', 'x3'])
+                nx1 = data3.x1.size
+                theta_data_exp[0].append(mean_theta.isel(x1=int(nx1*3/4)))
+                theta_data_exp[1].append(mean_theta.isel(x1=int(nx1/2)))
+                theta_data_exp[2].append(mean_theta.isel(x1=int(nx1/4)))
+
+        ax1.plot(time, theta_data_exp[0])
+        ax2.plot(time, theta_data_exp[1])
+        ax3.plot(time, theta_data_exp[2])
+        ax2.sharex(ax1)
+        ax3.sharex(ax1)
+
+# finally, save all plots
+print("Saving plots...")
 for key, value in plot_dict.items():
+    # inner loop is which experiments need info to be analyzed
     if not value["flag"]:
         continue
     fig: Figure = value["fig"]
-    if key == "vert_temp_theta":
-        ax1: Axes = value["ax1"]
-        ax1.set_title("Temp")
-        ax2: Axes = value["ax2"]
-        ax2.set_title("Theta")
-
-        for i, exp in enumerate(experiment_names):
-            data3 = nc3_data_by_exp[i]
-
-            temp_data = data3['temp']
-            ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
-
-            theta_data = data3['theta']
-            ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
-
-        ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
-        ax1.legend(legend_labels)
-        ax2.legend(legend_labels)
-        fig.tight_layout()
-
-    elif key == "hori_vel":
-        ax1: Axes = value["ax1"]
-        ax1.set_title('Mean Horizontal Vel')
-
-        for i, exp in enumerate(experiment_names):
-            data2 = nc2_data_by_exp[i]
-
-            hor_vel_data = data2['vel2']
-            vels = hor_vel_data.mean(dim=['x2', 'x3'])
-            if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
-                vels = -vels
-            ax1.plot(vels, hor_vel_data['x1'])
-
-        ax1.legend(legend_labels)
-        fig.tight_layout()
-
-    elif key == "vert_vel_dist":
-        titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
-        axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 6)]
-
-        bin_width = 0.5
-        # bins = 100
-        # bins = np.arange(-100, 100 + bin_width, bin_width)
-        # sample_pts = np.linspace(-20, 20, 100)
-        for i, exp in enumerate(experiment_names):
-            data2 = nc2_data_by_exp[i]
-            nx1 = data2.x1.size
-            idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
-            data_min = 0
-            data_max = 0
-            for i in range(len(axes)):
-                vel_data = data2['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2'))
-                bin_min = np.floor(vel_data.min() / bin_width) * bin_width
-                bin_max = np.floor(vel_data.max() / bin_width) * bin_width
-                bins = np.arange(bin_min, bin_max + bin_width, bin_width)
-                if bin_min < data_min:
-                    data_min = bin_min
-                if bin_max > data_max:
-                    data_max = bin_max
-                axes[i].hist(data2['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
-                # if i > 0:
-                #     axes[i].sharex(axes[0])
-                axes[i].legend(legend_labels)
-            axes[0].set_xlim([data_min, data_max])
-
-        fig.tight_layout()
-
-    elif key == "hori_theta":
-        ax1: Axes = value["ax1"]
-        ax1.set_title("Theta Top 1/4")
-        ax2: Axes = value["ax2"]
-        ax2.set_title("Theta Middle")
-        ax3: Axes = value["ax3"]
-        ax3.set_title("Theta Bottom 1/4")
-
-        for i, exp in enumerate(experiment_names):
-            theta_data_exp = [[], [], []]
-            time = []
-            _, nc3_files = get_nc_files(f"output_{exp}")
-            for j, nc3 in enumerate(nc3_files):
-                with xr.open_dataset(nc3).isel(time=0) as data3:
-                    time.append(float(data3.time))
-                    theta_data = data3['theta']
-                    mean_theta = theta_data.mean(dim=['x2', 'x3'])
-                    nx1 = data3.x1.size
-                    theta_data_exp[0].append(mean_theta.isel(x1=int(nx1*3/4)))
-                    theta_data_exp[1].append(mean_theta.isel(x1=int(nx1/2)))
-                    theta_data_exp[2].append(mean_theta.isel(x1=int(nx1/4)))
-
-            ax1.plot(time, theta_data_exp[0])
-            ax2.plot(time, theta_data_exp[1])
-            ax3.plot(time, theta_data_exp[2])
-            ax2.sharex(ax1)
-            ax3.sharex(ax1)
-
-        ax1.legend(legend_labels)
-        ax2.legend(legend_labels)
-        ax3.legend(legend_labels)
-        fig.tight_layout()
-
-    elif key == "gravity_wave":
-        ax1: Axes = value["ax1"]
-        ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
-        
-        for i, exp in enumerate(experiment_names):
-            data2 = nc2_data_by_exp[i]
-            data3 = nc3_data_by_exp[i]
-            
-            rho_data = data2['rho'].mean(dim=['x2', 'x3'])
-            theta_data = data3['theta'].mean(dim=['x2', 'x3'])
-            dtheta_dz = theta_data.differentiate('x1')
-            # drho_dz = rho_data.differentiate('x1')
-            # N_sq = -g / rho_data * drho_dz
-            N_sq = g / theta_data * dtheta_dz
-            
-            val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
-
-            ax1.plot(val, rho_data['x1'])
-
-        ax1.legend(legend_labels)
-        fig.tight_layout()
-
+    
     if vars(args)['3D']:
         output_file = f"{key}_steady_state_3D.png"
     elif len(compare_names) > 0:
@@ -228,16 +218,16 @@ for key, value in plot_dict.items():
     fig.savefig(f"{save_directory}/{output_file}", dpi=300)
     plt.close(fig)
 
-for i, exp in enumerate(experiment_names):
-    data2 = nc2_data_by_exp[i]
+# for i, exp in enumerate(experiment_names):
+#     data2 = nc2_data_by_exp[i]
 
-    rho = data2['rho']
-    u = data2['vel3']
-    v = data2['vel2']
-    w = data2['vel1']
+#     rho = data2['rho']
+#     u = data2['vel3']
+#     v = data2['vel2']
+#     w = data2['vel1']
 
-    KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
-    mean_KE_flux = KE_flux.mean()
-    print(f"Mean KE flux for experiment {exp}: {mean_KE_flux} W/m^2")
+#     KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
+#     mean_KE_flux = KE_flux.mean()
+#     print(f"Mean KE flux for experiment {exp}: {mean_KE_flux} W/m^2")
 
-print(f"Heat flux is {q_dot} W/m^2")
+# print(f"Heat flux is {q_dot} W/m^2")
