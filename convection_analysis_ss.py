@@ -240,17 +240,3 @@ for key, value in plot_dict.items():
         output_file = f"{key}_steady_state.png"
     fig.savefig(f"{save_directory}/{output_file}", dpi=300)
     plt.close(fig)
-
-# for i, exp in enumerate(experiment_names):
-#     data2 = nc2_data_by_exp[i]
-
-#     rho = data2['rho']
-#     u = data2['vel3']
-#     v = data2['vel2']
-#     w = data2['vel1']
-
-#     KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
-#     mean_KE_flux = KE_flux.mean()
-#     print(f"Mean KE flux for experiment {exp}: {mean_KE_flux} W/m^2")
-
-# print(f"Heat flux is {q_dot} W/m^2")
