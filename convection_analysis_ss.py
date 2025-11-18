@@ -221,7 +221,7 @@ for key, value in plot_dict.items():
         output_file = f"{key}_steady_state_2D_3D.png"
     else:
         output_file = f"{key}_steady_state.png"
-    fig.savefig(f"{save_directory}/{output_file}")
+    fig.savefig(f"{save_directory}/{output_file}", dpi=300)
     plt.close(fig)
 
 for i, exp in enumerate(experiment_names):
