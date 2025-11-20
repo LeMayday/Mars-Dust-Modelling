@@ -67,12 +67,17 @@ except FileExistsError:
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
+plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_power"] = {"flag": 1, "subplots": [3, 1]}
+plot_dict["KE_power"] = {"flag": 0, "subplots": [3, 1]}
+
+skip_main_loop = True
+for key, value in plot_dict.items():
+    if key != "hori_theta" and value["flag"]:
+        skip_main_loop = False
 
 # configure plot size and axes
 print("Preparing plots...")
@@ -106,6 +111,8 @@ legend_labels = ["Experiment " + exp for exp in experiment_names]
 
 last = len(experiment_names) - 1
 for i, exp in enumerate(experiment_names):
+    if skip_main_loop:
+        continue
     # outer loop is experiment so only one set of data is loaded at a time
     print(f"Loading data from experiment {exp} ...")
     nc2_data, nc3_data = averaged_exp_data(exp, num_files)
@@ -217,7 +224,7 @@ for i, exp in enumerate(experiment_names):
                 nx1 = nc2_data.x1.size
                 nx2 = nc2_data.x2.size
                 nx3 = nc2_data.x3.size
-                
+
                 titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
                 idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
                 axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
