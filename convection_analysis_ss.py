@@ -283,7 +283,7 @@ for i, exp in enumerate(experiment_names):
                         KE_hat = v_hat**2 + w_hat**2
                         KE_ps = abs(KE_hat)**2
 
-                    ax.plot(freqs, KE_ps / np.max(KE_ps), marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None')
+                    ax.plot(freqs, KE_ps / np.max(KE_ps), marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None', markerfacecolor='none')
                     if i == last:
                         ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
                     ax.set_xscale('log')
