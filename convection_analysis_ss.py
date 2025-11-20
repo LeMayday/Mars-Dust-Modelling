@@ -68,7 +68,7 @@ except FileExistsError:
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
+plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
@@ -83,6 +83,24 @@ for key, value in plot_dict.items():
     fig.set_size_inches(12, max(8, 4*subplot_array_dims[0]))
     for i in range(1, np.prod(subplot_array_dims) + 1):
         value[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
+
+# configure plot coloring
+linestyles = {"color": [], "style": [], "marker": [], "comb": []}
+for exp in experiment_names:
+    if "E" in exp:
+        color = 'b'
+    elif "I" in exp:
+        color = 'r'
+    linestyles["color"].append(color)
+    if "C" in exp:
+        style = '--'
+        marker = 'v'
+    elif "F" in exp:
+        style = "-"
+        marker = 'o'
+    linestyles["style"].append(style)
+    linestyles["marker"].append(marker)
+    linestyles["comb"].append(f"{style}{color}")
 
 legend_labels = ["Experiment " + exp for exp in experiment_names]
 
@@ -104,14 +122,14 @@ for i, exp in enumerate(experiment_names):
                 ax2.set_title("Theta")
 
                 temp_data = nc3_data['temp']
-                ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'])
+                ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'], linestyles["comb"][i])
 
                 theta_data = nc3_data['theta']
-                ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'])
+                ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'], linestyles["comb"][i])
 
                 if i == last:
                     # plot comparison line at very end
-                    ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k--')
+                    ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k:')
                 ax1.legend(legend_labels)
                 ax2.legend(legend_labels)
                 fig.tight_layout()
@@ -124,7 +142,7 @@ for i, exp in enumerate(experiment_names):
                 vels = hor_vel_data.mean(dim=['x2', 'x3'])
                 if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
                     vels = -vels
-                ax1.plot(vels, hor_vel_data['x1'])
+                ax1.plot(vels, hor_vel_data['x1'], linestyles["comb"][i])
 
                 ax1.legend(legend_labels)
                 fig.tight_layout()
@@ -150,7 +168,7 @@ for i, exp in enumerate(experiment_names):
                         data_min = bin_min
                     if bin_max > data_max:
                         data_max = bin_max
-                    ax.hist(nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
+                    ax.hist(nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6, linestyle=linestyles["style"][i], color=linestyles["color"][i])
                     # if i > 0:
                     #     ax.sharex(axes[0])
                     ax.set_title(titles[j])
@@ -170,7 +188,7 @@ for i, exp in enumerate(experiment_names):
                 N_sq = g / theta_data * dtheta_dz
                 val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
 
-                ax1.plot(val, rho_data['x1'])
+                ax1.plot(val, rho_data['x1'], linestyles["comb"][i])
                 ax1.set_xlim([0, 50E3])
 
                 ax1.legend(legend_labels)
@@ -187,9 +205,9 @@ for i, exp in enumerate(experiment_names):
                 KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
                 mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
 
-                ax1.plot(mean_KE_flux, mean_KE_flux['x1'])
+                ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyles["comb"][i])
                 if i == last:
-                    ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k--')
+                    ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
 
                 ax1.legend(legend_labels)
                 fig.tight_layout()
@@ -250,9 +268,9 @@ for i, exp in enumerate(experiment_names):
                         KE_hat = v_hat**2 + w_hat**2
                         KE_ps = abs(KE_hat)**2
 
-                    ax.plot(freqs, KE_ps, 'o')
+                    ax.plot(freqs, KE_ps, marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None')
                     if i == last:
-                        ax.plot(freqs, np.pow(freqs, -5/3), '--k')
+                        ax.plot(freqs, np.pow(freqs, -5/3), 'k:')
                     ax.set_xscale('log')
                     ax.set_yscale('log')
                     ax.set_title(titles[j])
@@ -284,9 +302,9 @@ if (value := plot_dict["hori_theta"])["flag"]:
                 theta_data_exp[1].append(mean_theta.isel(x1=int(nx1/2)))
                 theta_data_exp[2].append(mean_theta.isel(x1=int(nx1/4)))
 
-        ax1.plot(time, theta_data_exp[0])
-        ax2.plot(time, theta_data_exp[1])
-        ax3.plot(time, theta_data_exp[2])
+        ax1.plot(time, theta_data_exp[0], linestyles["comb"][i])
+        ax2.plot(time, theta_data_exp[1], linestyles["comb"][i])
+        ax3.plot(time, theta_data_exp[2], linestyles["comb"][i])
         ax2.sharex(ax1)
         ax3.sharex(ax1)
 
