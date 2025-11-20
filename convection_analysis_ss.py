@@ -141,8 +141,8 @@ for i, exp in enumerate(experiment_names):
                 idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
                 data_min = 0
                 data_max = 0
-                for i in range(len(axes)):
-                    vel_data = nc2_data['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2'))
+                for j, ax in enumerate(axes):
+                    vel_data = nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2'))
                     bin_min = np.floor(vel_data.min() / bin_width) * bin_width
                     bin_max = np.floor(vel_data.max() / bin_width) * bin_width
                     bins = np.arange(bin_min, bin_max + bin_width, bin_width)
@@ -150,10 +150,11 @@ for i, exp in enumerate(experiment_names):
                         data_min = bin_min
                     if bin_max > data_max:
                         data_max = bin_max
-                    axes[i].hist(nc2_data['vel1'].isel(x1=idxs[i]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
+                    ax.hist(nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6)
                     # if i > 0:
-                    #     axes[i].sharex(axes[0])
-                    axes[i].legend(legend_labels)
+                    #     ax.sharex(axes[0])
+                    ax.set_title(titles[j])
+                    ax.legend(legend_labels)
                 axes[0].set_xlim([data_min, data_max])
                 fig.tight_layout()
 
