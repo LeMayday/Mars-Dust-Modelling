@@ -67,11 +67,11 @@ except FileExistsError:
 
 plot_dict = {}
 plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
+plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
 plot_dict["KE_power"] = {"flag": 0, "subplots": [3, 1]}
 
 skip_main_loop = True
@@ -213,10 +213,13 @@ for i, exp in enumerate(experiment_names):
                 mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
 
                 ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyles["comb"][i])
-                if i == last:
+                if not "3D" in exp and i == last:
                     ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
+                    legend_labels.append('Forcing')
 
                 ax1.legend(legend_labels)
+                ax1.set_xlabel('Energy Flux (W/m^2)')
+                ax1.set_ylabel('Height (m)')
                 fig.tight_layout()
 
             case "KE_power":
