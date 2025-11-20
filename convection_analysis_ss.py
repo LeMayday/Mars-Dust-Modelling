@@ -96,13 +96,15 @@ for exp in experiment_names:
         color = 'b'
     elif "I" in exp:
         color = 'r'
-    linestyles["color"].append(color)
     if "C" in exp:
         style = '--'
         marker = 'v'
     elif "F" in exp:
         style = "-"
         marker = 'o'
+    if "45" in exp:
+        color = 'y'
+    linestyles["color"].append(color)
     linestyles["style"].append(style)
     linestyles["marker"].append(marker)
     linestyles["comb"].append(f"{style}{color}")
