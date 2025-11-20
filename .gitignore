@@ -166,4 +166,4 @@ cython_debug/
 output_logs/*
 *.convection
 *.nc
-
+.vscode
