@@ -66,12 +66,13 @@ except FileExistsError:
     pass
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
+plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
 plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
+plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["KE_power"] = {"flag": 1, "subplots": [3, 1]}
 
 # configure plot size and axes
 print("Preparing plots...")
@@ -190,6 +191,72 @@ for i, exp in enumerate(experiment_names):
                     ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k--')
 
                 ax1.legend(legend_labels)
+                fig.tight_layout()
+
+            case "KE_power":
+                titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
+                idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
+                axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
+
+                # num samples
+                nx2 = nc2_data.x2.size
+                nx3 = nc2_data.x3.size
+
+                # sampling frequency
+                L = 80E3        # size of domain
+                Fs2 = nx2 / L   # sampling frequency in x2 direction
+                Fs3 = nx3 / L   # sampling frequency in x3 direction
+
+                for j, ax in enumerate(axes):
+                    u = nc2_data['vel3'].isel(x1=idxs[j])
+                    v = nc2_data['vel2'].isel(x1=idxs[j])
+                    w = nc2_data['vel1'].isel(x1=idxs[j])
+                    if "3D" in exp:
+                        kx2 = np.fft.fftfreq(nx2, d=1/Fs2)
+                        kx2 = np.fft.fftshift(kx2)
+                        kx3 = np.fft.fftfreq(nx3, d=1/Fs3)
+                        kx3 = np.fft.fftshift(kx3)
+                        Kx2, Kx3 = np.meshgrid(kx2, kx3)
+                        k = np.sqrt(Kx2**2 + Kx3**2)
+
+                        u_hat = np.fft.fft2(u)
+                        u_hat = np.fft.fftshift(u_hat)
+                        v_hat = np.fft.fft2(v)
+                        v_hat = np.fft.fftshift(v_hat)
+                        w_hat = np.fft.fft2(w)
+                        w_hat = np.fft.fftshift(w_hat)
+
+                        KE_hat = u_hat**2 + v_hat**2 + w_hat**2
+                        KE_ps_2D = abs(KE_hat)**2
+
+                        # ASSUMES nx2 = nx3!!!
+                        freqs = kx2[kx2 >= 0]
+                        hist_counts, _ = np.histogram(k.ravel(), bins=freqs)
+                        hist_power, _ = np.histogram(k.ravel(), bins=freqs, weights=KE_ps_2D.ravel())
+
+                        KE_ps = np.divide(hist_power, hist_counts, where=hist_counts != 0)
+                        freqs = np.convolve(freqs, [0.5, 0.5])[1:-1]
+
+                    else:
+                        freqs = np.fft.rfftfreq(nx2, d=1/Fs2)
+                        # (nx, 1) arrays do not undergo 1D ffts correctly, need (nx,)
+                        v = v.isel(x3=0)
+                        w = w.isel(x3=0)
+
+                        v_hat = np.fft.rfft(v)
+                        w_hat = np.fft.rfft(w)
+
+                        KE_hat = v_hat**2 + w_hat**2
+                        KE_ps = abs(KE_hat)**2
+
+                    ax.plot(freqs, KE_ps, 'o')
+                    if i == last:
+                        ax.plot(freqs, np.pow(freqs, -5/3), '--k')
+                    ax.set_xscale('log')
+                    ax.set_yscale('log')
+                    ax.set_title(titles[j])
+                    ax.legend(legend_labels)
+
                 fig.tight_layout()
 
 # handle time series data separately
