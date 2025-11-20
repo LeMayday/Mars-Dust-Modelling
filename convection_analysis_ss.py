@@ -44,14 +44,14 @@ s0 = 580;           # W / m^2
 q_dot = s0 / 4      # heat flux
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--experiment-names", required=True, type=str, help="Name of the experiments to analyze as one string (e.g. ACD)")
+parser.add_argument("-e", "--experiment-names", required=True, type=str, nargs='+', help="Name of the experiments to analyze as one string (e.g. ACD)")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--3D", action="store_true", help="Whether to use 3D data")
-group.add_argument("--compare-with", type=str, default="", help="List of 3D data to compare with")
+group.add_argument("--compare-with", type=str, nargs='+', default="", help="List of 3D data to compare with")
 parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
 args = parser.parse_args()
-experiment_names = sorted(list(args.experiment_names.upper()))
-compare_names = sorted(list(args.compare_with.upper()))
+experiment_names = args.experiment_names
+compare_names = args.compare_with
 if vars(args)['3D']:
     experiment_names = [exp_name + "_3D" for exp_name in experiment_names]
 elif len(compare_names) > 0:
