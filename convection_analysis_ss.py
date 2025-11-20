@@ -139,8 +139,10 @@ for i, exp in enumerate(experiment_names):
                 if i == last:
                     # plot comparison line at very end
                     ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k:')
-                ax1.legend(legend_labels)
+                ax1.legend([*legend_labels, "Adiabatic profile"])
                 ax2.legend(legend_labels)
+                ax2.sharey(ax1)
+                ax1.set_ylabel("Height (m)")
                 fig.tight_layout()
 
             case "hori_vel":
