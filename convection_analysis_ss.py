@@ -179,7 +179,7 @@ for i, exp in enumerate(experiment_names):
             case "gravity_wave":
                 ax1: Axes = value["ax1"]
                 ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
-                    
+
                 rho_data = nc2_data['rho'].mean(dim=['x2', 'x3'])
                 theta_data = nc3_data['theta'].mean(dim=['x2', 'x3'])
                 dtheta_dz = theta_data.differentiate('x1')
@@ -213,13 +213,14 @@ for i, exp in enumerate(experiment_names):
                 fig.tight_layout()
 
             case "KE_power":
+                # num samples
+                nx1 = nc2_data.x1.size
+                nx2 = nc2_data.x2.size
+                nx3 = nc2_data.x3.size
+                
                 titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
                 idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
                 axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
-
-                # num samples
-                nx2 = nc2_data.x2.size
-                nx3 = nc2_data.x3.size
 
                 # sampling frequency
                 L = 80E3        # size of domain
