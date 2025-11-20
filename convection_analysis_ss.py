@@ -289,20 +289,17 @@ for i, exp in enumerate(experiment_names):
 # handle time series data separately
 if (value := plot_dict["hori_theta"])["flag"]:
     print("Loading time series...")
-    ax1: Axes = value["ax1"]
-    ax1.set_title("Theta Top 1/4")
-    ax2: Axes = value["ax2"]
-    ax2.set_title("Theta Middle")
-    ax3: Axes = value["ax3"]
-    ax3.set_title("Theta Bottom 1/4")
+    titles = ["Theta Top 1/4", "Theta Middle", "Theta Bottom 1/4"]
+    axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
+    fig: Figure = value["fig"]
 
     for i, exp in enumerate(experiment_names):
         theta_data_exp = [[], [], []]
-        time = []
         _, nc3_files = get_nc_files(f"output_{exp}")
+        time = np.zeros(len(nc3_files))
         for j, nc3 in enumerate(nc3_files):
             with xr.open_dataset(nc3).isel(time=0) as data3:
-                time.append(float(data3.time))
+                time[j] = float(data3.time) / 60
                 theta_data = data3['theta']
                 mean_theta = theta_data.mean(dim=['x2', 'x3'])
                 nx1 = data3.x1.size
@@ -310,11 +307,18 @@ if (value := plot_dict["hori_theta"])["flag"]:
                 theta_data_exp[1].append(mean_theta.isel(x1=int(nx1/2)))
                 theta_data_exp[2].append(mean_theta.isel(x1=int(nx1/4)))
 
-        ax1.plot(time, theta_data_exp[0], linestyles["comb"][i])
-        ax2.plot(time, theta_data_exp[1], linestyles["comb"][i])
-        ax3.plot(time, theta_data_exp[2], linestyles["comb"][i])
-        ax2.sharex(ax1)
-        ax3.sharex(ax1)
+        for j, ax in enumerate(axes):
+            ax.plot(time.tolist(), theta_data_exp[j], linestyles["comb"][i])
+            if j > 0:
+                ax.sharex(axes[0])
+
+    for i, ax in enumerate(axes):
+        ax.set_title(titles[i])
+        ax.set_ylabel('Theta (K)')
+        ax.legend(legend_labels)
+
+    axes[-1].set_xlabel('Time (min)')
+    fig.tight_layout()
 
 # finally, save all plots
 print("Saving plots...")
