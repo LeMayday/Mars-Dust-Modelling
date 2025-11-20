@@ -71,8 +71,8 @@ plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
 plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
 plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
 plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
-plot_dict["KE_power"] = {"flag": 0, "subplots": [3, 1]}
+plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
+plot_dict["KE_power"] = {"flag": 1, "subplots": [3, 1]}
 
 skip_main_loop = True
 for key, value in plot_dict.items():
@@ -279,14 +279,16 @@ for i, exp in enumerate(experiment_names):
                         KE_hat = v_hat**2 + w_hat**2
                         KE_ps = abs(KE_hat)**2
 
-                    ax.plot(freqs, KE_ps, marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None')
+                    ax.plot(freqs, KE_ps / np.max(KE_ps), marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None')
                     if i == last:
-                        ax.plot(freqs, np.pow(freqs, -5/3), 'k:')
+                        ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
                     ax.set_xscale('log')
                     ax.set_yscale('log')
                     ax.set_title(titles[j])
-                    ax.legend(legend_labels)
+                    ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
+                    ax.legend([*legend_labels, "k^(-5/3)"])
 
+                axes[-1].set_xlabel('Wavenumber (1/m)')
                 fig.tight_layout()
 
 # handle time series data separately
