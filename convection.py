@@ -22,7 +22,8 @@ device = torch.device("cuda:0")
 
 # command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--experiment-name", required=True, help="Name of the experiment")
+parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
+parser.add_argument("-i", "--input-file", required=True, type=str, help="Input yaml file")
 parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
 parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
 args = parser.parse_args()
@@ -44,10 +45,13 @@ o = 5.67E-8         # W / m^2 / K^4
 s0 = 580;           # W / m^2
 # Teq = (s0 / o / 4) ** (1/4)
 q_dot = s0 / 4      # heat flux
+q_dot = q_dot / 2
+print(f"Forcing: {q_dot} W/m^2")
 
 # set hydrodynamic options
-print("Reading input file: " + f"convection_{experiment_name}.yaml")
-op = MeshBlockOptions.from_yaml(f"convection_{experiment_name}.yaml")
+input_file = args.input_file
+print(f"Reading input file: {input_file}")
+op = MeshBlockOptions.from_yaml(input_file)
 
 # initialize block
 block = MeshBlock(op)
