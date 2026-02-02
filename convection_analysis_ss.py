@@ -49,7 +49,10 @@ group = parser.add_mutually_exclusive_group()
 group.add_argument("--3D", action="store_true", help="Whether to use 3D data")
 group.add_argument("--compare-with", type=str, nargs='+', default="", help="List of 3D data to compare with")
 parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
+parser.add_argument("-i", "--index", type=str, default="", help="Index for file naming (in case of duplicate names)")
 args = parser.parse_args()
+file_index = args.index
+if file_index is not "": file_index = "_" + file_index
 experiment_names = args.experiment_names
 compare_names = args.compare_with
 if vars(args)['3D']:
@@ -340,10 +343,10 @@ for key, value in plot_dict.items():
         continue
     fig: Figure = value["fig"]
     if vars(args)['3D']:
-        output_file = f"{key}_steady_state_3D.png"
+        output_file = f"{key}_steady_state_3D{file_index}.png"
     elif len(compare_names) > 0:
-        output_file = f"{key}_steady_state_2D_3D.png"
+        output_file = f"{key}_steady_state_2D_3D{file_index}.png"
     else:
-        output_file = f"{key}_steady_state.png"
+        output_file = f"{key}_steady_state{file_index}.png"
     fig.savefig(f"{save_directory}/{output_file}", dpi=300)
     plt.close(fig)
