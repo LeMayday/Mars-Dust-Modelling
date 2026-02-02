@@ -256,14 +256,18 @@ for i, exp in enumerate(experiment_names):
                         Kx2, Kx3 = np.meshgrid(kx2, kx3)
                         k = np.sqrt(Kx2**2 + Kx3**2)
 
-                        u_hat = np.fft.fft2(u)
-                        u_hat = np.fft.fftshift(u_hat)
-                        v_hat = np.fft.fft2(v)
-                        v_hat = np.fft.fftshift(v_hat)
-                        w_hat = np.fft.fft2(w)
-                        w_hat = np.fft.fftshift(w_hat)
+                        # u_hat = np.fft.fft2(u)
+                        # u_hat = np.fft.fftshift(u_hat)
+                        # v_hat = np.fft.fft2(v)
+                        # v_hat = np.fft.fftshift(v_hat)
+                        # w_hat = np.fft.fft2(w)
+                        # w_hat = np.fft.fftshift(w_hat)
 
-                        KE_hat = u_hat**2 + v_hat**2 + w_hat**2
+                        # KE_hat = u_hat**2 + v_hat**2 + w_hat**2
+
+                        KE = u**2 + v**2 + w**2
+                        KE_hat = np.fft.fft2(KE)
+                        KE_hat = np.fft.fftshift(KE_hat)
                         KE_ps_2D = abs(KE_hat)**2
 
                         # ASSUMES nx2 = nx3!!!
@@ -289,14 +293,17 @@ for i, exp in enumerate(experiment_names):
                         freqs = freqs[1:]
                         KE_ps = KE_ps[1:]
 
-                    ax.plot(freqs, KE_ps / np.max(KE_ps), marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None', markerfacecolor='none')
-                    if i == last:
-                        ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
+                    ax.plot(freqs, KE_ps, marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None', markerfacecolor='none')
+                    #if i == last:
+                        #ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
+                        #ax.plot(freqs, np.pow(freqs, -3) / np.max(np.pow(freqs, -3)), 'c:')
+                        #ax.plot(freqs, np.pow(freqs, -5) / np.max(np.pow(freqs, -5)), 'm:')
                     ax.set_xscale('log')
                     ax.set_yscale('log')
+                    ax.set_xlim([1E-4, np.max(freqs)])
                     ax.set_title(titles[j])
                     ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
-                    ax.legend([*legend_labels, "k^(-5/3)"])
+                    ax.legend([*legend_labels, "k^(-5/3)", "k^(-3)", "k^(-5)"])
 
                 axes[-1].set_xlabel('Wavenumber (1/m)')
                 fig.tight_layout()
