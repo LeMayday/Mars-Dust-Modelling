@@ -69,13 +69,13 @@ except FileExistsError:
     pass
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 0, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 0, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"] = {"flag": 0, "subplots": [5, 1]}
-plot_dict["hori_vel"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["gravity_wave"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_flux"] = {"flag": 0, "subplots": [1, 1]}
-plot_dict["KE_power"] = {"flag": 1, "subplots": [3, 1]}
+plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
+plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
+plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
+plot_dict["hori_vel"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
+plot_dict["KE_power"] = {"flag": 1, "subplots": [1, 3]}
 
 skip_main_loop = True
 for key, value in plot_dict.items():
@@ -88,7 +88,7 @@ for key, value in plot_dict.items():
     fig = plt.figure()
     value["fig"] = fig
     subplot_array_dims = value["subplots"]
-    fig.set_size_inches(12, max(8, 4*subplot_array_dims[0]))
+    fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
     for i in range(1, np.prod(subplot_array_dims) + 1):
         value[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
