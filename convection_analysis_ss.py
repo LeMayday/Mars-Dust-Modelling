@@ -183,8 +183,8 @@ for i, exp in enumerate(experiment_names):
                     if bin_max > data_max:
                         data_max = bin_max
                     ax.hist(nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6, linestyle=linestyles["style"][i], color=linestyles["color"][i])
-                    # if i > 0:
-                    #     ax.sharex(axes[0])
+                    if i > 0:
+                        ax.sharex(axes[0])
                     ax.set_title(titles[j])
                     ax.legend(legend_labels)
                 axes[0].set_xlim([data_min, data_max])
