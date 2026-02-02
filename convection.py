@@ -1,6 +1,8 @@
 import torch
 import math
 import time
+# IMPORTANT!! importing nc2pt after snapy causes a seg fault (for some reason)
+import nc2pt
 import kintera
 import snapy
 from snapy import (
@@ -10,16 +12,27 @@ from snapy import (
         OutputOptions,
         NetcdfOutput
         )
-import matplotlib.pyplot as plt
-from torch.profiler import profile, record_function, ProfilerActivity
-from movie_from_pngs import delete_files, create_movie
-from integration import plot_func
+import os
+import argparse
+import re
 
 torch.set_default_dtype(torch.float64)
+torch.manual_seed(42)
+device = torch.device("cuda:0")
 
-# torch.set_num_threads(1)
-# torch.set_num_interop_threads(1)
+# command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
+parser.add_argument("-i", "--input-file", required=True, type=str, help="Input yaml file")
+parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
+parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
+args = parser.parse_args()
+experiment_name = args.experiment_name
+# 3D is not a valid python identifier, but it can be used as a dict key
+if vars(args)['3D']:
+    experiment_name = experiment_name + "_3D"
 
+# assign some key values
 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/mars-atmosphere-equation-metric/
 # https://pds-atmospheres.nmsu.edu/education_and_outreach/encyclopedia/gas_constant.htm
 # put these values here and / or in yaml file -- no, these values have priority?
@@ -30,18 +43,20 @@ Rd = 189.0          # gas constant
 gamma = 1.29
 o = 5.67E-8         # W / m^2 / K^4
 s0 = 580;           # W / m^2
-Teq = (s0 / o / 4) ** (1/4)
-q_dot = o * Teq **4     # heat flux
-
-# device
-device = torch.device("cuda:0")
+# Teq = (s0 / o / 4) ** (1/4)
+q_dot = s0 / 4      # heat flux
+q_dot = q_dot / 2
+print(f"Forcing: {q_dot} W/m^2")
 
 # set hydrodynamic options
-op = MeshBlockOptions.from_yaml("convection.yaml")
+input_file = args.input_file
+print(f"Reading input file: {input_file}")
+op = MeshBlockOptions.from_yaml(input_file)
 
 # initialize block
 block = MeshBlock(op)
 block.to(device)
+interior = block.part((0, 0, 0))
 
 # get handles to modules
 coord = block.hydro.module("coord")
@@ -53,8 +68,6 @@ Rd = kintera.constants.Rgas / kintera.species_weights()[0]
 cv = kintera.species_cref_R()[0] * Rd
 cp = cv + Rd
 
-# set initial condition
-
 x3v, x2v, x1v = torch.meshgrid(
     coord.buffer("x3v"), coord.buffer("x2v"), coord.buffer("x1v"), indexing="ij"
 )   # x3v is x, x2v is y, x1v is z
@@ -65,14 +78,60 @@ nc2 = coord.buffer("x2v").shape[0]
 nc1 = coord.buffer("x1v").shape[0]
 nvar = 5
 
+# make output
+directory = f"output_{experiment_name}"
+try:
+    os.mkdir(directory)
+except FileExistsError:
+    pass
+out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(2).variable("prim"))
+out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(3).variable("uov"))
+
 w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
+# determine how to initialize values
+if args.continue_from is not None:
+    continue_file = args.continue_from
+    print(f"Continuing from {continue_file}")
+    # from Google: screens leading zeros and searches for number starting with leading digit or single zero
+    pattern = r"\.(?:0*)([1-9]\d*|0)\.nc$"
+    match = re.search(pattern, continue_file)
+    file_num = int(match.group(1))
+    print(file_num)
+    # have file naming convention start where given file left off
+    # note that filenumber is incremented again in the integration step
+    # the first file from continuation will be the same as the file used to continue
+    for i in range(file_num - 1):
+        for out in [out2, out3]:
+            out.increment_file_number()
 
-# temp = Ts - grav * x1v / cp       # adiabatic condition
-temp = torch.full_like(x1v, Ts)     # isothermal condition
+    name = "data2.pt"
+    nc2pt.save_nc_as_pt(continue_file, name)
+    data = nc2pt.load_tensors(name)
+    os.remove(name)
 
-# w[index.ipr] = p0 * torch.pow(temp / Ts, cp / Rd)
-w[index.ipr] = p0 * torch.exp(-grav * x1v / Rd / Ts)        # isothermal pressure
-w[index.idn] = w[index.ipr] / (Rd * temp)                   # ideal gas law
+    w[interior][index.idn] = data["rho"]
+    w[interior][index.ivx] = data["vel1"]
+    w[interior][index.ivy] = data["vel2"]
+    w[interior][index.ivz] = data["vel3"]
+    w[interior][index.ipr] = data["press"]
+
+    integration_start_time = nc2pt.get_nc_time(continue_file)
+
+else:
+    # normal intialization if no continuation
+    # temp = Ts - grav * x1v / cp       # adiabatic condition
+    temp = torch.full_like(x1v, Ts)     # isothermal condition
+
+    # w[index.ipr] = p0 * torch.pow(temp / Ts, cp / Rd)
+    w[index.ipr] = p0 * torch.exp(-grav * x1v / Rd / Ts)        # isothermal pressure
+    w[index.idn] = w[index.ipr] / (Rd * temp)                   # ideal gas law
+
+    block.set_uov("temp", temp)
+    block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
+
+    # random initial velocity
+    w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
+    integration_start_time = 0.0
 
 block_vars = {}
 block_vars["hydro_w"] = w
@@ -80,53 +139,44 @@ block_vars = block.initialize(block_vars)
 block_vars["scalar_x"] = torch.tensor(0.)
 block_vars["scalar_v"] = torch.tensor(0.)
 
-# make output
-out2 = NetcdfOutput(OutputOptions().file_basename("output/convection").fid(2).variable("prim"))
-out3 = NetcdfOutput(OutputOptions().file_basename("output/convection").fid(3).variable("uov"))
-
-block.set_uov("temp", temp)
-block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
-
-activities = [ProfilerActivity.CPU]
-
-# integration
-count = 0
-start_time = time.time()
-interior = block.part((0, 0, 0))
-current_time = 0.0
-
+# dz for heat flux
 bottom_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][0])[interior[1:3]]
 bottom_row_height = bottom_row_height.to(device)
 top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
 top_row_height = top_row_height.to(device)  
 
-w[interior][index.ivx] = torch.randn_like(w[interior][index.ivx])
-filenames = []
-# with profile(activities=activities, record_shapes=True) as prof:
-while not block.intg.stop(count, current_time):
+# profiling info
+gpu_id = 0
+total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
+
+# integration
+count = 0
+start_time = time.time()
+current_time = integration_start_time
+# if continuing, integration should pretend as though it starts at 0
+# this should also work for cold start, since integration_start_time will be 0
+while not block.intg.stop(count, current_time - integration_start_time):
     dt = block.max_time_step(block_vars)
 
     if count % 1000 == 0:
         print(f"count = {count}, dt = {dt}, time = {current_time}")
         u = block_vars["hydro_u"]
         print("mass = ", u[interior][index.idn].sum())
+        current_mem = torch.cuda.memory_allocated(gpu_id) / 1024**2
+        reserved_mem = torch.cuda.memory_reserved(gpu_id) / 1024**2
+        print(f"{current_mem:.2f} allocated, {current_mem / total_mem * 100:.1f}%, {reserved_mem:.2f} reserved")
 
         ivol = thermo.compute("DY->V", (w[index.idn], w[index.icy:]))
         temp = thermo.compute("PV->T", (w[index.ipr], ivol))
+        theta = temp * (p0 / w[index.ipr]).pow(Rd / cp)
 
         block.set_uov("temp", temp)
-        block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
+        block.set_uov("theta", theta)
 
         for out in [out2, out3]:
             out.increment_file_number()
             out.write_output_file(block, block_vars, current_time)
             out.combine_blocks()
-
-        fig = plot_func(coord.buffer("x1v")[interior[-1]].cpu(), torch.mean(temp[interior[1:]], dim=[0, 1]).cpu(), current_time)
-        output_file = f"frame_{count}.png"
-        fig.savefig(output_file)
-        plt.close(fig)
-        filenames.append(output_file)
 
     for stage in range(len(block.intg.stages)):
         block.forward(dt, stage, block_vars)
@@ -139,7 +189,3 @@ while not block.intg.stop(count, current_time):
     current_time += dt
 
 print("elapsed time = ", time.time() - start_time)
-create_movie(filenames, "vertical_temp.mp4")
-delete_files(filenames)
-# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-# print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))

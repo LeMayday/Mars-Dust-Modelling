@@ -161,4 +161,9 @@ cython_debug/
 
 *.png
 *.mp4
-*output/*.nc
+*output*/*.nc
+*.swp
+output_logs/*
+*.convection
+*.nc
+.vscode
