@@ -1,0 +1,2 @@
+/var/spool/slurmd.spool/job34450700/slurm_script: line 23: 755299 Killed                  python convection.py -e "$exp_name" --3D
+slurmstepd: error: Detected 1 oom_kill event in StepId=34450700.batch. Some of the step tasks have been OOM Killed.

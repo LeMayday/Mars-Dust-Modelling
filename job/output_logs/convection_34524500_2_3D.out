@@ -1,0 +1,11 @@
+Reading input file: convection_B_3D.yaml
+count = 0, dt = 0.5617267359269917, time = 0.0
+mass =  tensor(240812.4917, device='cuda:0')
+elapsed time =  68.30037045478821
+Working directory is /home/maychris/Mars_Dust/Mars-Dust-Modelling
+Running on hosts gl1523
+Running on hosts gl1523
+Running job convection
+Running on 1 nodes
+Running on processors
+Time submitted: Fri Oct 17 22:31:53 EDT 2025

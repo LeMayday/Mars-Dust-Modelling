@@ -1,0 +1,27 @@
+Reading input file: convection_C_3D.yaml
+count = 0, dt = 1.1488562446504442, time = 0.0
+mass =  tensor(30100.9655, device='cuda:0')
+count = 1000, dt = 1.083223666828917, time = 1115.4649680696614
+mass =  tensor(30104.0312, device='cuda:0')
+count = 2000, dt = 0.971194687603003, time = 2148.6596139637068
+mass =  tensor(30104.1573, device='cuda:0')
+count = 3000, dt = 1.0055371297816522, time = 3123.799854593928
+mass =  tensor(30105.5728, device='cuda:0')
+count = 4000, dt = 1.0331254617594636, time = 4151.666450784483
+mass =  tensor(30106.4522, device='cuda:0')
+count = 5000, dt = 1.0262539895597105, time = 5180.375568516177
+mass =  tensor(30108.8291, device='cuda:0')
+count = 6000, dt = 1.0055158846796644, time = 6195.0453829443495
+mass =  tensor(30110.5842, device='cuda:0')
+count = 7000, dt = 0.991789876933272, time = 7208.193541325805
+mass =  tensor(30112.5227, device='cuda:0')
+count = 8000, dt = 1.0094165658713588, time = 8217.583366023942
+mass =  tensor(30114.3370, device='cuda:0')
+count = 9000, dt = 0.9704613909728234, time = 9212.621972701514
+mass =  tensor(30115.8871, device='cuda:0')
+count = 10000, dt = 0.9844147496226968, time = 10192.112727133825
+mass =  tensor(30116.5876, device='cuda:0')
+count = 11000, dt = 0.9930361714913524, time = 11167.689259531071
+mass =  tensor(30116.9819, device='cuda:0')
+count = 12000, dt = 0.9702455243980835, time = 12137.476338057637
+mass =  tensor(30117.4927, device='cuda:0')

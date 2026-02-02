@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/maychris/Mars_Dust/Mars-Dust-Modelling/convection.py", line 129, in <module>
+    current_mem = torch.cuda.memeory_allocated(gpu_id) / 1024**2
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'torch.cuda' has no attribute 'memeory_allocated'. Did you mean: 'memory_allocated'?

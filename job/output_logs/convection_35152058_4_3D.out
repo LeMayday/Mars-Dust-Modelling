@@ -1,0 +1,248 @@
+Working directory is /home/maychris/Mars_Dust/Mars-Dust-Modelling
+Running on hosts gl1525
+Running on hosts gl1525
+Running job convection
+Running on 1 nodes
+Running on processors
+Time submitted: Fri Oct 31 08:54:23 EDT 2025
+Reading input file: convection_D_3D.yaml
+count = 0, dt = 0.38295208155014804, time = 0.0
+mass =  tensor(101592.2485, device='cuda:0')
+6277.57 allocated, 13.8%, 7352.00 reserved
+count = 1000, dt = 0.3716437677897822, time = 377.2485985667471
+mass =  tensor(101592.9252, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 2000, dt = 0.36097044441936965, time = 743.5127294605538
+mass =  tensor(101594.7753, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 3000, dt = 0.3504641040751326, time = 1099.2894352266692
+mass =  tensor(101597.5865, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 4000, dt = 0.32934460150582, time = 1441.135428600618
+mass =  tensor(101600.1793, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 5000, dt = 0.32671849498957284, time = 1765.6310219828467
+mass =  tensor(101593.2158, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 6000, dt = 0.3046597438825784, time = 2077.3434711996315
+mass =  tensor(101594.3427, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 7000, dt = 0.306535225554124, time = 2379.1209338688823
+mass =  tensor(101594.4834, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 8000, dt = 0.32935370134453346, time = 2697.4721483525072
+mass =  tensor(101593.8599, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 9000, dt = 0.34089344163452223, time = 3033.142091812916
+mass =  tensor(101593.0452, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 10000, dt = 0.3387654222832583, time = 3372.8621306794134
+mass =  tensor(101591.9839, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 11000, dt = 0.3365990630729043, time = 3708.5203620318266
+mass =  tensor(101590.6988, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 12000, dt = 0.3344193483887577, time = 4044.1309637503764
+mass =  tensor(101589.4171, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 13000, dt = 0.33323913753687523, time = 4378.012941668172
+mass =  tensor(101588.1853, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 14000, dt = 0.3341818040105467, time = 4712.453546938633
+mass =  tensor(101586.9335, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 15000, dt = 0.33363050136603545, time = 5046.622773642533
+mass =  tensor(101585.5904, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 16000, dt = 0.3328141081379455, time = 5380.937138289216
+mass =  tensor(101584.2009, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 17000, dt = 0.3341075551513107, time = 5715.083649667216
+mass =  tensor(101582.8074, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 18000, dt = 0.33289665451424805, time = 6048.904999813491
+mass =  tensor(101581.3019, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 19000, dt = 0.33205800664455126, time = 6381.34981468149
+mass =  tensor(101579.7748, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 20000, dt = 0.331390009904426, time = 6713.750701423956
+mass =  tensor(101578.1995, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 21000, dt = 0.33295168583270957, time = 7045.518727850647
+mass =  tensor(101576.5785, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 22000, dt = 0.32916339502293473, time = 7375.920498284799
+mass =  tensor(101574.9755, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 23000, dt = 0.3292647338641561, time = 7707.369479578838
+mass =  tensor(101573.2596, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 24000, dt = 0.3322363821822566, time = 8037.453682304933
+mass =  tensor(101571.5787, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 25000, dt = 0.32723050428308925, time = 8367.114715419188
+mass =  tensor(101569.8406, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 26000, dt = 0.3303922806226043, time = 8693.101797406433
+mass =  tensor(101568.0553, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 27000, dt = 0.32737342346525855, time = 9016.569906041512
+mass =  tensor(101566.2303, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 28000, dt = 0.3288680924199452, time = 9343.083770341644
+mass =  tensor(101564.3453, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 29000, dt = 0.32170674861069926, time = 9670.321713855908
+mass =  tensor(101562.5250, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 30000, dt = 0.32749862460398105, time = 9995.114391543084
+mass =  tensor(101560.6953, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 31000, dt = 0.32740988258947734, time = 10321.177927570472
+mass =  tensor(101558.8175, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 32000, dt = 0.3252256920337195, time = 10643.993302239447
+mass =  tensor(101556.8340, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 33000, dt = 0.32522006605335896, time = 10967.499193891428
+mass =  tensor(101554.8004, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 34000, dt = 0.32241058835238073, time = 11290.094487705946
+mass =  tensor(101552.7562, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 35000, dt = 0.3221361072815878, time = 11613.11043771456
+mass =  tensor(101550.6778, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 36000, dt = 0.3150466506965254, time = 11930.69049156472
+mass =  tensor(101548.6506, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 37000, dt = 0.3066340081004327, time = 12243.14052492844
+mass =  tensor(101546.7330, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 38000, dt = 0.31060500916853223, time = 12550.40229011268
+mass =  tensor(101544.8433, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 39000, dt = 0.3002546480177352, time = 12857.14337267937
+mass =  tensor(101542.9428, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 40000, dt = 0.2955639262335773, time = 13157.248046311444
+mass =  tensor(101540.9214, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 41000, dt = 0.2935452945907718, time = 13450.424945560739
+mass =  tensor(101538.8874, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 42000, dt = 0.29456410473506595, time = 13743.828636605816
+mass =  tensor(101536.8813, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 43000, dt = 0.3003751925252579, time = 14042.221519471874
+mass =  tensor(101534.7486, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 44000, dt = 0.2970566989360262, time = 14338.579439829111
+mass =  tensor(101532.5904, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 45000, dt = 0.28873402953698685, time = 14632.18457672673
+mass =  tensor(101530.3468, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 46000, dt = 0.28129000110207, time = 14915.448606967882
+mass =  tensor(101528.5812, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 47000, dt = 0.27938794338086925, time = 15198.446369553423
+mass =  tensor(101526.8837, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 48000, dt = 0.2835152818496346, time = 15480.985320172747
+mass =  tensor(101525.0894, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 49000, dt = 0.2884787792539597, time = 15770.197830242256
+mass =  tensor(101523.2384, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 50000, dt = 0.2839371030131341, time = 16053.002241906748
+mass =  tensor(101521.6077, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 51000, dt = 0.2788210569976927, time = 16336.939292528183
+mass =  tensor(101520.0642, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 52000, dt = 0.2817539599149823, time = 16615.94034875193
+mass =  tensor(101518.5077, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 53000, dt = 0.28391390985579684, time = 16896.837326983117
+mass =  tensor(101516.7461, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 54000, dt = 0.2785490140832129, time = 17179.87287475971
+mass =  tensor(101514.9562, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 55000, dt = 0.2844248652316525, time = 17465.05383167438
+mass =  tensor(101513.2188, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 56000, dt = 0.28853190060833334, time = 17745.504120251535
+mass =  tensor(101511.6010, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 57000, dt = 0.28581548553099667, time = 18031.329083022432
+mass =  tensor(101510.1086, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 58000, dt = 0.2761225445348513, time = 18312.854865679918
+mass =  tensor(101508.7445, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 59000, dt = 0.28558025542238696, time = 18596.4708674221
+mass =  tensor(101507.6711, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 60000, dt = 0.282547947456265, time = 18876.97514248329
+mass =  tensor(101506.5539, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 61000, dt = 0.2858941592910633, time = 19157.06407284926
+mass =  tensor(101505.3822, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 62000, dt = 0.2840236116420949, time = 19442.013892077255
+mass =  tensor(101504.1906, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 63000, dt = 0.2878886646997976, time = 19726.220395453238
+mass =  tensor(101502.9861, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 64000, dt = 0.2855193845242006, time = 20009.16552390185
+mass =  tensor(101501.5550, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 65000, dt = 0.2884729799853966, time = 20295.948217516063
+mass =  tensor(101500.0902, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 66000, dt = 0.29398819060969883, time = 20586.756784662317
+mass =  tensor(101498.7189, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 67000, dt = 0.2875149492846401, time = 20867.832345909952
+mass =  tensor(101497.7329, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 68000, dt = 0.2857705932677821, time = 21155.46065521416
+mass =  tensor(101496.8503, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 69000, dt = 0.2794864212587605, time = 21437.135998116926
+mass =  tensor(101496.1420, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 70000, dt = 0.2798612189477053, time = 21719.910780107308
+mass =  tensor(101495.2951, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 71000, dt = 0.2726433491458065, time = 21993.76432317329
+mass =  tensor(101494.5372, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 72000, dt = 0.2762851888710311, time = 22267.295966960944
+mass =  tensor(101493.7819, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 73000, dt = 0.2785531310892714, time = 22544.244501129153
+mass =  tensor(101492.7618, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 74000, dt = 0.2809485497068562, time = 22820.847552736
+mass =  tensor(101491.7564, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 75000, dt = 0.27601145205937766, time = 23098.890695129456
+mass =  tensor(101490.5986, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 76000, dt = 0.28034133414028783, time = 23378.552841704346
+mass =  tensor(101489.5284, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 77000, dt = 0.27512229385944836, time = 23652.33814737939
+mass =  tensor(101488.5789, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved
+count = 78000, dt = 0.2727980173446828, time = 23924.993285039145
+mass =  tensor(101487.7871, device='cuda:0')
+6524.06 allocated, 14.3%, 31370.00 reserved
+count = 79000, dt = 0.2821199837041822, time = 24201.985786761947
+mass =  tensor(101487.1768, device='cuda:0')
+6524.24 allocated, 14.3%, 31370.00 reserved

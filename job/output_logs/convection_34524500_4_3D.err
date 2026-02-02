@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/maychris/Mars_Dust/Mars-Dust-Modelling/convection.py", line 141, in <module>
+    block.forward(dt, stage, block_vars)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 6.70 GiB. GPU 0 has a total capacity of 44.43 GiB of which 1.22 GiB is free. Including non-PyTorch memory, this process has 43.21 GiB memory in use. Of the allocated memory 41.27 GiB is allocated by PyTorch, and 1.62 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
