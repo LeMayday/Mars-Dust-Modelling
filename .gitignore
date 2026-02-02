@@ -160,10 +160,11 @@ cython_debug/
 #.idea/
 
 *.png
-*.mp4
+# *.mp4
 *output*/*.nc
 *.swp
 output_logs/*
 *.convection
 *.nc
 .vscode
+.nfs*
