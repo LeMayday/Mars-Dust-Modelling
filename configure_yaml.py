@@ -97,3 +97,17 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
 
     forcing_dict = {'const-gravity': {'grav1': -3.73}}
 
+    # define outputs
+
+    # generate restart file every hour, generate nc file every 10 mins
+    outputs_dict = [{'type': 'restart', 'dt': 3600},
+                    {'type': 'netcdf', 'variables': ['prim', 'uov'], 'dt': 600}]
+
+    full_dictionary = {'geometry': geometry_dict,
+                       'dynamics': dynamics_dict,
+                       'boundary-condition': boundary_condition_dict,
+                       'integration': integration_dict,
+                       'forcing': forcing_dict,
+                       'outputs': outputs_dict}
+    return full_dictionary
+
