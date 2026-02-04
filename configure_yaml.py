@@ -66,9 +66,9 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
     gamma = 1.3
     weight = 43.4E-3
 
-    equation_of_state_dict = {'type': eos_type, 'gammad': gammad, 'weight':weight}
+    equation_of_state_dict = {'type': eos_type, 'gammad': gamma, 'weight': weight, 'limiter': False}
 
-    vertical_projection_dict = {'type': 'temperature', 'pressure-margin': 1E6}
+    vertical_projection_dict = {'type': 'temperature', 'pressure-margin': 1.E-6}
     
     # only 2D explicit course has shock false
     fine = res == Res.FINE
@@ -89,8 +89,8 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
 
     # define boundary conditions
 
-    boundary_condition_dict = {'internal': {'solid-density': 1E3,
-                                            'solid-pressure':1E9,
+    boundary_condition_dict = {'internal': {'solid-density': 1.E3,
+                                            'solid-pressure':1.E9,
                                             'max-iter': 5},            
                                'external': {'x1-inner': 'reflecting',
                                             'x1-outer': 'reflecting',
