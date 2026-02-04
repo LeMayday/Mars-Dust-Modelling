@@ -128,7 +128,7 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                        'outputs': outputs_dict}
     return full_dictionary
 
-def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str):
+def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str) -> str:
     # Note: output files are generated with a basename that is the same as the yaml file
     # snapy 1.2.6 meshblock_options.cpp line 19 and netcdf.cpp line 86
     # so yaml files and output nc files should be stored in the same directory for a given experiment
@@ -136,4 +136,5 @@ def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str)
     with open(file_path, "w") as file_handler:
         full_dictionary = configure_yaml(sim_properties, is_implicit(exp_name), get_exp_res(exp_name), is_3D(exp_name))
         yaml.dump(full_dictionary, file_handler, sort_keys=False)
+    return file_path
 

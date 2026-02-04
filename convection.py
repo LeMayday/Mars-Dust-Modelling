@@ -3,6 +3,7 @@ import math
 import time
 # IMPORTANT!! importing nc2pt after snapy causes a seg fault (for some reason)
 import nc2pt
+from configure_yaml import Sim_Properties, generate_yaml
 import kintera
 import snapy
 from snapy import MeshBlockOptions, MeshBlock
@@ -59,13 +60,23 @@ tlim = 43200
 sim_properties = Sim_Properties(Dx1, Dx2, Dx3, tlim)
 
 output_dir = f"output_{experiment_name}"
-generate_yaml(sim_properties, f"{output_dir}/topography", experiment_name)
+try:
+    os.mkdir(output_dir)
+except FileExistsError:
+    pass
+input_file = generate_yaml(sim_properties, f"{output_dir}/topography", experiment_name)
+print(f"Generated yaml file: {input_file}")
 
-exit()
+_ = kintera.ThermoOptions.from_yaml(input_file)
+Rd = kintera.constants.Rgas / kintera.species_weights()[0]
+cv = kintera.species_cref_R()[0] * Rd
+cp = cv + Rd
+
+
+raise Exception("Oh no!")
 
 
 # set hydrodynamic options
-input_file = args.input_file
 print(f"Reading input file: {input_file}")
 op = MeshBlockOptions.from_yaml(input_file)
 
@@ -76,13 +87,7 @@ interior = block.part((0, 0, 0))
 
 # get handles to modules
 coord = block.hydro.module("coord")
-thermo = block.hydro.module("eos.thermo")
 eos = block.hydro.module("eos")
-
-# thermodynamics
-Rd = kintera.constants.Rgas / kintera.species_weights()[0]
-cv = kintera.species_cref_R()[0] * Rd
-cp = cv + Rd
 
 x3v, x2v, x1v = torch.meshgrid(
     coord.buffer("x3v"), coord.buffer("x2v"), coord.buffer("x1v"), indexing="ij"
