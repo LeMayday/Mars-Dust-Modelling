@@ -55,16 +55,17 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
 
     vertical_projection_dict = {'type': 'temperature', 'pressure-margin': 1E6}
     
-    # only explicit course has shock false
+    # only 2D explicit course has shock false
+    fine = res == Res.FINE
     reconstruct_dict = {'vertical'  : {'type' : 'weno5',
                                        'scale': False,
-                                       'shock': threeD or implicit or res == Res.FINE},
+                                       'shock': threeD or implicit or fine},
                         'horizontal': {'type' : 'weno5',
                                        'scale': False,
-                                       'shock': threeD or implicit or res == Res.FINE}}
+                                       'shock': threeD or implicit or fine}}
 
-    # explicit fine also uses hllc
-    riemann_solver_dict = {'type': 'hllc' if (threeD or (not implicit and res == Res.FINE)) else 'lmars'}
+    # 2D explicit fine also uses hllc
+    riemann_solver_dict = {'type': 'hllc' if (threeD or (not implicit and fine)) else 'lmars'}
 
     dynamics_dict = {'equation-of-state': equation_of_state_dict,
                     'vertical-projection': vertical_projection_dict,
