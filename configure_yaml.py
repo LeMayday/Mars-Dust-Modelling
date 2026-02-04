@@ -21,6 +21,19 @@ def get_res_multiplier(res: Res):
         case Res.FINE:
             return 2
 
+def is_implicit(exp_name: str) -> bool:
+    return exp_name[0] == 'I'
+
+def get_exp_res(exp_name: str) -> Res:
+    match exp_name[1]:
+        case 'C':
+            return Res.COURSE
+        case 'F':
+            return Res.FINE
+
+def is_3D(exp_name: str) -> bool:
+    return '_3D' in exp_name
+
 def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, threeD: bool):
     # define geometry
 
@@ -110,4 +123,13 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                        'forcing': forcing_dict,
                        'outputs': outputs_dict}
     return full_dictionary
+
+def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str):
+    # Note: output files are generated with a basename that is the same as the yaml file
+    # snapy 1.2.6 meshblock_options.cpp line 19 and netcdf.cpp line 86
+    # so yaml files and output nc files should be stored in the same directory for a given experiment
+    file_path = f"{file_base}_{exp_name}.yaml"
+    with open(file_path, "w") as file_handler:
+        full_dictionary = configure_yaml(sim_properties, is_implicit(exp_name), get_exp_res(exp_name), is_3D(exp_name))
+        yaml.dump(full_dictionary, file_handler, sort_keys=False)
 
