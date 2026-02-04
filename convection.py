@@ -28,23 +28,11 @@ if vars(args)['3D']:
     experiment_name = experiment_name + "_3D"
 
 # assign some key values
-# https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/mars-atmosphere-equation-metric/
-# https://pds-atmospheres.nmsu.edu/education_and_outreach/encyclopedia/gas_constant.htm
-# put these values here and / or in yaml file -- no, these values have priority?
-p0 = 669            # average surface pressure on Mars
-Ts = -31 + 273      # average surface temperature
-grav = 3.73         # Mars gravity constant
-Rd = 189.0          # gas constant
-gamma = 1.29
-o = 5.67E-8         # W / m^2 / K^4
-s0 = 580;           # W / m^2
-# Teq = (s0 / o / 4) ** (1/4)
 q_dot = s0 / 4      # heat flux
 q_dot = q_dot / 2
 print(f"Forcing: {q_dot} W/m^2")
 
 # following https://github.com/elijah-mullens/paddle/blob/main/docs/content/notebooks/Tutorial-Straka.ipynb
-
 def call_user_output(bvars):
     hydro_w = bvars["hydro_w"]
     out = {}

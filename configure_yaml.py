@@ -2,6 +2,7 @@
 from enum import Enum
 import yaml
 from typing import NamedTuple   # immutable class (like const struct)
+from mars import grav
 
 class Res(Enum):
     COURSE = 'course'
@@ -110,7 +111,7 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
 
     # define forcing
 
-    forcing_dict = {'const-gravity': {'grav1': -3.73}}
+    forcing_dict = {'const-gravity': {'grav1': -grav}}
 
     # define outputs
 
