@@ -1,10 +1,17 @@
 # following https://github.com/elijah-mullens/paddle/blob/main/docs/content/notebooks/Tutorial-Straka.ipynb
 from enum import Enum
 import yaml
+from typing import NamedTuple   # immutable class (like const struct)
 
 class Res(Enum):
     COURSE = 'course'
     FINE = 'fine'
+
+class Sim_Properties(NamedTuple):
+    Dx1: int
+    Dx2: int
+    Dx3: int
+    tlim: int
 
 def get_res_multiplier(res: Res):
     assert(res in Res)
@@ -14,16 +21,16 @@ def get_res_multiplier(res: Res):
         case Res.FINE:
             return 2
 
-def configure_yaml(x1, x2, x3, threeD: bool, res: Res, implicit: bool, tlim):
+def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, threeD: bool):
     # define geometry
 
     geometry_type = 'cartesian'
     x1min = 0
-    x1max = x1
+    x1max = sim_properties.Dx1
     x2min = 0
-    x2max = x2
+    x2max = sim_properties.Dx2
     x3min = 0
-    x3max = x3
+    x3max = sim_properties.Dx3
 
     res_multiplier = get_res_multiplier(res)
     nx1 = 64 * res_multiplier
@@ -82,7 +89,7 @@ def configure_yaml(x1, x2, x3, threeD: bool, res: Res, implicit: bool, tlim):
                         'cfl': 0.45 if (threeD and not implicit) else 0.9,
                         'implicit-scheme': int(implicit),
                         'nlim': -1,
-                        'tlim': tlim,
+                        'tlim': sim_properties.tlim,
                         'ncycle_out':1000}
 
     # define forcing
