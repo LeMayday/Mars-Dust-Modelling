@@ -5,13 +5,8 @@ import time
 import nc2pt
 import kintera
 import snapy
-from snapy import (
-        index,
-        MeshBlockOptions,
-        MeshBlock,
-        OutputOptions,
-        NetcdfOutput
-        )
+from snapy import MeshBlockOptions, MeshBlock
+from snapy import kIDN, kIV1, kIV2, kIV3, kIPR
 import os
 import argparse
 import re
@@ -23,7 +18,6 @@ device = torch.device("cuda:0")
 # command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
-parser.add_argument("-i", "--input-file", required=True, type=str, help="Input yaml file")
 parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
 parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
 args = parser.parse_args()
@@ -47,6 +41,28 @@ s0 = 580;           # W / m^2
 q_dot = s0 / 4      # heat flux
 q_dot = q_dot / 2
 print(f"Forcing: {q_dot} W/m^2")
+
+# following https://github.com/elijah-mullens/paddle/blob/main/docs/content/notebooks/Tutorial-Straka.ipynb
+
+def call_user_output(bvars):
+    hydro_w = bvars["hydro_w"]
+    out = {}
+    temp = hydro_w[kIPR] / (Rd * hydro_w[kIDN])
+    out["temp"] = temp
+    out["theta"] = temp * (p0 / hydro_w[kIPR]).pow(Rd / cp)
+    return out
+
+Dx1 = 20E3
+Dx2 = 80E3
+Dx3 = 80E3
+tlim = 43200
+sim_properties = Sim_Properties(Dx1, Dx2, Dx3, tlim)
+
+output_dir = f"output_{experiment_name}"
+generate_yaml(sim_properties, f"{output_dir}/topography", experiment_name)
+
+exit()
+
 
 # set hydrodynamic options
 input_file = args.input_file
