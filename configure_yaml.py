@@ -12,6 +12,8 @@ class Sim_Properties(NamedTuple):
     Dx2: int
     Dx3: int
     tlim: int
+    reference_state_dict = {'Tref': 0, 'Pref': 1E5}
+    species = [{'name': 'dry', 'composition': {'C': 0.95, 'O': 1.90, 'N': 0.06, 'Ar': 0.02}, 'cv_R': 3.4}]
 
 def get_res_multiplier(res: Res):
     assert(res in Res)
@@ -116,7 +118,9 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
     outputs_dict = [{'type': 'restart', 'dt': 3600},
                     {'type': 'netcdf', 'variables': ['prim', 'uov'], 'dt': 600}]
 
-    full_dictionary = {'geometry': geometry_dict,
+    full_dictionary = {'reference-state': Sim_Properties.reference_state_dict,
+                       'species': Sim_Properties.species,
+                       'geometry': geometry_dict,
                        'dynamics': dynamics_dict,
                        'boundary-condition': boundary_condition_dict,
                        'integration': integration_dict,
