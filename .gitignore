@@ -121,7 +121,7 @@ celerybeat.pid
 
 # Environments
 .env
-.venv
+.venv*
 env/
 venv/
 ENV/
@@ -168,3 +168,6 @@ output_logs/*
 *.nc
 .vscode
 .nfs*
+*.sh
+image_files/*
+
