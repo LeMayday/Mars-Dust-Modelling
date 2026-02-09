@@ -3,7 +3,8 @@ import math
 import time
 # IMPORTANT!! importing nc2pt after snapy causes a seg fault (for some reason)
 import nc2pt
-from configure_yaml import Sim_Properties, generate_yaml
+from configure_yaml import Sim_Properties, generate_yaml, get_num_cells_exp
+from mars import *
 import kintera
 import snapy
 from snapy import MeshBlockOptions, MeshBlock
@@ -11,21 +12,11 @@ from snapy import kIDN, kIV1, kIV2, kIV3, kIPR
 import os
 import argparse
 import re
+from mars_topography import get_cell_topography
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
-device = torch.device("cuda:0")
 
-# command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
-parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
-parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
-args = parser.parse_args()
-experiment_name = args.experiment_name
-# 3D is not a valid python identifier, but it can be used as a dict key
-if vars(args)['3D']:
-    experiment_name = experiment_name + "_3D"
 
 # assign some key values
 q_dot = s0 / 4      # heat flux
@@ -33,7 +24,7 @@ q_dot = q_dot / 2
 print(f"Forcing: {q_dot} W/m^2")
 
 # following https://github.com/elijah-mullens/paddle/blob/main/docs/content/notebooks/Tutorial-Straka.ipynb
-def call_user_output(bvars):
+def call_user_output(bvars, Rd, cp):
     hydro_w = bvars["hydro_w"]
     out = {}
     temp = hydro_w[kIPR] / (Rd * hydro_w[kIDN])
@@ -41,151 +32,103 @@ def call_user_output(bvars):
     out["theta"] = temp * (p0 / hydro_w[kIPR]).pow(Rd / cp)
     return out
 
-Dx1 = 20E3
-Dx2 = 80E3
-Dx3 = 80E3
-tlim = 43200
-sim_properties = Sim_Properties(Dx1, Dx2, Dx3, tlim)
 
-output_dir = f"output_{experiment_name}"
-try:
-    os.mkdir(output_dir)
-except FileExistsError:
-    pass
-input_file = generate_yaml(sim_properties, f"{output_dir}/topography", experiment_name)
-print(f"Generated yaml file: {input_file}")
-
-_ = kintera.ThermoOptions.from_yaml(input_file)
-Rd = kintera.constants.Rgas / kintera.species_weights()[0]
-cv = kintera.species_cref_R()[0] * Rd
-cp = cv + Rd
+def generate_yaml_input_file(sim_properties: Sim_Properties, experiment_name: str) -> str:
+    output_dir = f"output_{experiment_name}"
+    try:
+        os.mkdir(output_dir)
+    except FileExistsError:
+        pass
+    input_file = generate_yaml(sim_properties, f"{output_dir}/topography", experiment_name)
+    print(f"Generated yaml file: {input_file}")
+    return input_file
 
 
-raise Exception("Oh no!")
+def run_with(input_file: str, restart_file: str):
+    # set hydrodynamic options
+    print(f"Reading input file: {input_file}")
+    # this still will set gas variables (weights, etc) from species list in yaml (see snapy equation_of_state.cpp line 66)
+    op = MeshBlockOptions.from_yaml(input_file)
+    # initialize block
+    block = MeshBlock(op)
+    if torch.cuda.is_available() and op.layout().backend() == "nccl":
+        device = torch.device("cuda:0")
+        print("device = ", device)
+    else:
+        device = torch.device("cpu")
+    block.to(device)
+    interior = block.part((0, 0, 0))
+
+    # get handles to modules
+    coord = block.module("coord")
+    thermo = block.module("hydro.eos.thermo")
+    eos = block.module("hydro.eos")
+
+    x3v, x2v, x1v = torch.meshgrid(
+        coord.buffer("x3v"), coord.buffer("x2v"), coord.buffer("x1v"), indexing="ij"
+    )   # x3v is x, x2v is y, x1v is z
+    # dimensions
+    nc3 = coord.buffer("x3v").shape[0]
+    nc2 = coord.buffer("x2v").shape[0]
+    nc1 = coord.buffer("x1v").shape[0]
+    nvar = 5
+
+    Rd = kintera.constants.Rgas / kintera.species_weights()[0]
+    cv = kintera.species_cref_R()[0] * Rd
+    cp = cv + Rd
+
+    block_vars = {}
+    if restart_file != '':
+        module = torch.jit.load(restart_file)
+        for name, data in module.named_buffers():
+            block_vars[name] = data.to(device)
+    else:
+        w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
+        temp = torch.full_like(x1v, Ts)                             # isothermal condition
+
+        # need to adjust x1v by where geopotential surface is
+        w[kIPR] = p0 * torch.exp(-grav * x1v / Rd / Ts)             # isothermal pressure
+        w[kIDN] = w[kIPR] / (Rd * temp)                             # ideal gas law
+
+        # random initial velocity
+        w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
+
+        block_vars["hydro_w"] = w
+        block_vars, current_time = block.initialize(block_vars)
+
+    block.set_user_output_func(lambda bvars: call_user_output(bvars, Rd, cp))
+
+    # integration
+    block.make_outputs(block_vars, current_time)
+    while not block.intg.stop(block.inc.cycle(), current_time):
+        dt = block.max_time_step(block_vars)
+        block.print_cycle_info(block_vars, current_time, dt)
+
+        for state in range(len(block.intg.stages)):
+            block.forward(block_vars, dt, stage)
+
+        err = block.check_redo(block_vars)
+        if err > 0:
+            continue    # redo current step
+        if err < 0:
+            break       # terminate
+
+        current_time += dt
+        block.make_outputs(block_vars, current_time)
+
+    block.finalize(block_vars, current_time)
 
 
-# set hydrodynamic options
-print(f"Reading input file: {input_file}")
-op = MeshBlockOptions.from_yaml(input_file)
+# raise Exception("Oh no!")
 
-# initialize block
-block = MeshBlock(op)
-block.to(device)
-interior = block.part((0, 0, 0))
 
-# get handles to modules
-coord = block.hydro.module("coord")
-eos = block.hydro.module("eos")
 
-x3v, x2v, x1v = torch.meshgrid(
-    coord.buffer("x3v"), coord.buffer("x2v"), coord.buffer("x1v"), indexing="ij"
-)   # x3v is x, x2v is y, x1v is z
-
-# dimensions
-nc3 = coord.buffer("x3v").shape[0]
-nc2 = coord.buffer("x2v").shape[0]
-nc1 = coord.buffer("x1v").shape[0]
-nvar = 5
-
-# make output
-directory = f"output_{experiment_name}"
-try:
-    os.mkdir(directory)
-except FileExistsError:
-    pass
-out2 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(2).variable("prim"))
-out3 = NetcdfOutput(OutputOptions().file_basename(f"{directory}/convection_{experiment_name}").fid(3).variable("uov"))
-
-w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
-# determine how to initialize values
-if args.continue_from is not None:
-    continue_file = args.continue_from
-    print(f"Continuing from {continue_file}")
-    # from Google: screens leading zeros and searches for number starting with leading digit or single zero
-    pattern = r"\.(?:0*)([1-9]\d*|0)\.nc$"
-    match = re.search(pattern, continue_file)
-    file_num = int(match.group(1))
-    print(file_num)
-    # have file naming convention start where given file left off
-    # note that filenumber is incremented again in the integration step
-    # the first file from continuation will be the same as the file used to continue
-    for i in range(file_num - 1):
-        for out in [out2, out3]:
-            out.increment_file_number()
-
-    name = "data2.pt"
-    nc2pt.save_nc_as_pt(continue_file, name)
-    data = nc2pt.load_tensors(name)
-    os.remove(name)
-
-    w[interior][index.idn] = data["rho"]
-    w[interior][index.ivx] = data["vel1"]
-    w[interior][index.ivy] = data["vel2"]
-    w[interior][index.ivz] = data["vel3"]
-    w[interior][index.ipr] = data["press"]
-
-    integration_start_time = nc2pt.get_nc_time(continue_file)
-
-else:
-    # normal intialization if no continuation
-    # temp = Ts - grav * x1v / cp       # adiabatic condition
-    temp = torch.full_like(x1v, Ts)     # isothermal condition
-
-    # w[index.ipr] = p0 * torch.pow(temp / Ts, cp / Rd)
-    w[index.ipr] = p0 * torch.exp(-grav * x1v / Rd / Ts)        # isothermal pressure
-    w[index.idn] = w[index.ipr] / (Rd * temp)                   # ideal gas law
-
-    block.set_uov("temp", temp)
-    block.set_uov("theta", temp * (p0 / w[index.ipr]).pow(Rd / cp))
-
-    # random initial velocity
-    w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
-    integration_start_time = 0.0
-
-block_vars = {}
-block_vars["hydro_w"] = w
-block_vars = block.initialize(block_vars)
-block_vars["scalar_x"] = torch.tensor(0.)
-block_vars["scalar_v"] = torch.tensor(0.)
 
 # dz for heat flux
 bottom_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][0])[interior[1:3]]
 bottom_row_height = bottom_row_height.to(device)
 top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
 top_row_height = top_row_height.to(device)  
-
-# profiling info
-gpu_id = 0
-total_mem = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**2
-
-# integration
-count = 0
-start_time = time.time()
-current_time = integration_start_time
-# if continuing, integration should pretend as though it starts at 0
-# this should also work for cold start, since integration_start_time will be 0
-while not block.intg.stop(count, current_time - integration_start_time):
-    dt = block.max_time_step(block_vars)
-
-    if count % 1000 == 0:
-        print(f"count = {count}, dt = {dt}, time = {current_time}")
-        u = block_vars["hydro_u"]
-        print("mass = ", u[interior][index.idn].sum())
-        current_mem = torch.cuda.memory_allocated(gpu_id) / 1024**2
-        reserved_mem = torch.cuda.memory_reserved(gpu_id) / 1024**2
-        print(f"{current_mem:.2f} allocated, {current_mem / total_mem * 100:.1f}%, {reserved_mem:.2f} reserved")
-
-        ivol = thermo.compute("DY->V", (w[index.idn], w[index.icy:]))
-        temp = thermo.compute("PV->T", (w[index.ipr], ivol))
-        theta = temp * (p0 / w[index.ipr]).pow(Rd / cp)
-
-        block.set_uov("temp", temp)
-        block.set_uov("theta", theta)
-
-        for out in [out2, out3]:
-            out.increment_file_number()
-            out.write_output_file(block, block_vars, current_time)
-            out.combine_blocks()
 
     for stage in range(len(block.intg.stages)):
         block.forward(dt, stage, block_vars)
@@ -198,3 +141,37 @@ while not block.intg.stop(count, current_time - integration_start_time):
     current_time += dt
 
 print("elapsed time = ", time.time() - start_time)
+
+def main():
+    # command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
+    parser.add_argument("-t", "--time-limit", required=True, type=int, help="Time limit for integration in seconds.")
+    parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
+    parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
+    parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
+    args = parser.parse_args()
+    experiment_name = args.experiment_name
+    # 3D is not a valid python identifier, but it can be used as a dict key
+    # modify experiment name if 3D
+    if vars(args)['3D']:
+        experiment_name = experiment_name + "_3D"
+    # determine restart file
+    restart_file = args.continue_from if args.continue_from is not None else ''
+    # determine topographical information
+    if args.lat_long_bounds is not None:
+        nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
+        min_lat, max_lat, min_long, max_long = *args.lat_long_bounds
+        # 2nd dim will be lat, 3rd dim will be long
+        mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
+        Dx1 = Dx2 / nx2 * nx1
+        assert Dx1 >= 20E3, "Domain height is not >~ 1.5 Mars scale heights"
+    else:
+        Dx1 = 20E3
+        Dx2 = 80E3
+        Dx3 = 80E3
+    sim_properties = Sim_Properties(Dx1, Dx2, Dx3, args.time_limit)
+    # determine yaml input file
+    input_file = generate_yaml_input_file(sim_properties, experiment_name)
+    
+
