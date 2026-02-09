@@ -3,6 +3,7 @@ from enum import Enum
 import yaml
 from typing import NamedTuple   # immutable class (like const struct)
 from mars import grav
+from typing import Tuple
 
 class Res(Enum):
     COURSE = 'course'
@@ -37,6 +38,16 @@ def get_exp_res(exp_name: str) -> Res:
 def is_3D(exp_name: str) -> bool:
     return '_3D' in exp_name
 
+def get_num_cells_exp(exp_name: str) -> Tuple[int, int, int]:
+    return get_num_cells(get_exp_res(exp_name), is_3D(exp_name))
+
+def get_num_cells(res: Res, threeD: bool) -> Tuple[int, int, int]:
+    res_multiplier = get_res_multiplier(res)
+    nx1 = 64 * res_multiplier
+    nx2 = 256 * res_multiplier
+    nx3 = 256 * res_multiplier if threeD else 1
+    return nx1, nx2, nx3
+
 def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, threeD: bool):
     # define geometry
 
@@ -48,10 +59,7 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
     x3min = 0
     x3max = sim_properties.Dx3
 
-    res_multiplier = get_res_multiplier(res)
-    nx1 = 64 * res_multiplier
-    nx2 = 256 * res_multiplier
-    nx3 = 256 * res_multiplier if threeD else 1
+    nx1, nx2, nx3 = get_num_cells(res, threeD)
 
     geometry_dict = {'type': geometry_type,
                      'bounds': {'x1min': x1min, 'x1max': x1max,
