@@ -64,10 +64,10 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
     eos_type = 'ideal-gas'
     # see https://descanso.jpl.nasa.gov/propagation/mars/MarsPub_sec4.pdf
     # and https://www.meteor.iastate.edu/classes/mt452/Class_Discussion/Mars-physical_and_orbital_statistics.pdf
-    gamma = 1.3
-    weight = 43.4E-3
-
+    gamma = 1.294
+    weight = 43.45E-3
     equation_of_state_dict = {'type': eos_type, 'gammad': gamma, 'weight': weight, 'limiter': False}
+    # equation_of_state_dict = {'type': eos_type, 'density-floor': 1.E-10, 'pressure-floor': 1.E-10, 'limiter': False}
 
     vertical_projection_dict = {'type': 'temperature', 'pressure-margin': 1.E-6}
     
