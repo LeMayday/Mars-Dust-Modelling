@@ -246,6 +246,8 @@ def main():
         mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
         Dx1 = Dx2 / nx2 * nx1
         assert Dx1 >= 16E3, "Domain height is not >~ 1.5 Mars scale heights"
+        # TODO: need a way to appropriately choose atmospheric height if vertical domain is very large
+        print(Dx1, Dx2, Dx3)
     else:
         Dx1 = 20E3
         Dx2 = 80E3
