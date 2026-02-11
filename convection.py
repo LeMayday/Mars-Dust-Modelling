@@ -126,7 +126,8 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
         device = torch.device("cpu")
     block.to(device)
     interior = block.part((0, 0, 0))
-    interior_geom = interior[1:3]
+    # the first slice in interior is for the variables
+    interior_geom = interior[1:]
 
     # get handles to modules
     coord = block.module("coord")
