@@ -13,6 +13,7 @@ width_px = 46080
 # m_per_px = 463.093541550370901
 m_per_px = 463
 
+
 def load_MOLA_DEM_data(window: Window) -> NDArray:
     # rasterio supposedly handles determining metadata and all that
     # note if using np.memmap that metadata is split across header and trailer, and that even though label says little endian, the data is big endian
@@ -22,11 +23,14 @@ def load_MOLA_DEM_data(window: Window) -> NDArray:
         mars_data = src.read(1, window=window)
     return mars_data
 
+
 def lat_to_pix(input_lat):
     return (-input_lat + 90) * height_px // 180
 
+
 def long_to_pix(input_long):
     return (input_long + 180) * width_px // 360
+
 
 def get_region_topography(min_lat, max_lat, min_long, max_long) -> NDArray:
     '''
@@ -43,6 +47,7 @@ def get_region_topography(min_lat, max_lat, min_long, max_long) -> NDArray:
     w = Window.from_slices((lat_to_pix(max_lat), lat_to_pix(min_lat)), (long_to_pix(min_long), long_to_pix(max_long)))
     mars_data = load_MOLA_DEM_data(w)
     return mars_data
+
 
 def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num_cells_long) -> Tuple[NDArray, int, int]:
     '''
@@ -64,6 +69,7 @@ def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num
 
     return cell_data, m_per_px * num_pixels_lat, m_per_px * num_pixels_long 
 
+
 def main():
     import matplotlib.pyplot as plt
     min_lat = -35
@@ -80,6 +86,7 @@ def main():
     im2 = ax2.imshow(mars_data_false, cmap='gray')
     fig.colorbar(im2, ax=ax2)
     fig.savefig("data_import_test.png", dpi=300)
+
 
 if __name__ == "__main__":
     main()
