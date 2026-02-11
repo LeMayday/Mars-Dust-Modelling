@@ -61,15 +61,20 @@ def pad_tensor(input_tensor: torch.Tensor) -> torch.Tensor:
     return temp
 
 
-def assign_solid_tensor(cell_data: torch.Tensor, x1f: torch.Tensor) -> Tuple[torch.Tensor, float]:
+def shift_terrain_data(cell_data: torch.Tensor) -> Tuple[torch.Tensor, float]:
     '''
-    Cast celled topography data to tensor of 1s and 0s compatible with model geometry.
-    Also need to return min value to adjust reference pressure.
-    Assume x1f is just interior - want f for cell edge so lowest point can be at bottom row
+    Shift terrain data so lowest point is 0 and return min value
     '''
     min_elevation = torch.min(cell_data)
     # shift data up
-    cell_data = cell_data - min_elevation
+    return cell_data - min_elevation, min_elevation
+
+
+def assign_solid_tensor(cell_data: torch.Tensor, x1f: torch.Tensor) -> torch.Tensor:
+    '''
+    Cast celled topography data to tensor of 1s and 0s compatible with model geometry.
+    Assume x1f is just interior - want f for cell edge so lowest point can be at bottom row
+    '''
     nc_lat = cell_data.shape[0]
     nc_long = cell_data.shape[1]
     nc_height = x1f.shape[2]
@@ -79,7 +84,7 @@ def assign_solid_tensor(cell_data: torch.Tensor, x1f: torch.Tensor) -> Tuple[tor
     cell_data = cell_data.repeat(1, 1, nc_height)
     # boolean mask with tensor of vertical heights
     solid_data = cell_data > x1f
-    return solid_data, min_elevation
+    return solid_data
 
 
 def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
@@ -143,15 +148,17 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     block_vars = {}
     # define solid region, pad with ghost zones
     if mars_data is not None:
+        mars_data, min_elevation = shift_terrain_data(mars_data)
         # since x1v is stacked from meshgrid, without doing the same, can simply subtract the min value
         x1f = x1v[interior_geom] - torch.min(x1v[interior_geom])
-        solid_tensor, min_elevation = assign_solid_tensor(mars_data.to(device), x1f.to(device))
+        solid_tensor = assign_solid_tensor(mars_data.to(device), x1f.to(device))
         solid_tensor = solid_tensor.to(device)
-        # need to pad tensor here
-        block_vars["solid"] = pad_tensor(solid_tensor.int()).to(device)
+        # need to pad tensor here, tensor must be boolean
+        block_vars["solid"] = pad_tensor(solid_tensor.char()).bool().to(device)
     else:
         # no topography
         solid_tensor = torch.zeros_like(x1v[interior_geom]).to(device)
+        min_elevation = 0
     # determine how to initialize variables
     if restart_file is not None:
         print(f"Using restart file: {restart_file}")
