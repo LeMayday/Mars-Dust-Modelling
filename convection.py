@@ -233,7 +233,7 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     block.finalize(block_vars, current_time)
 
 
-def main():
+def main(args):
     # command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
@@ -241,7 +241,7 @@ def main():
     parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
     parser.add_argument("-r", "--restart-file", type=str, help="Continue integrating from a file")
     parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     experiment_name = args.experiment_name
     if vars(args)['3D']:
         # 3D is not a valid python identifier, but it can be used as a dict key
@@ -275,6 +275,14 @@ def main():
     
 
 if __name__ == "__main__":
-    debug = True
-    main()
+    boot_parser = argparse.ArgumentParser(add_help=False)           # add_help=False avoids conflicts
+    boot_parser.add_argument('-d', '--debug', action='store_true')
+    boot_args, extras = boot_parser.parse_known_args()
+
+    if boot_args.debug:
+        print("--- RUNNING IN DEBUG MODE ---")
+        debug = True
+        # copied from print statement for test arguments I've been using
+        extras = ['-e', 'IC', '-t', '43200', '--3D', '-l', '-35', '-25', '70', '80']
+    main(extras)
 
