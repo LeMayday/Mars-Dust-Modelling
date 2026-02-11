@@ -44,8 +44,12 @@ def get_region_topography(min_lat, max_lat, min_long, max_long) -> NDArray:
     if min_long < -180 or max_long > 180:
         raise ValueError("Long bounds must be in [-180, 180].")
 
+    # (max_lat, min_lat) is right for viewing, but not for data being stored in order of increasing latitude
+    # need to window (max_lat, min_lat) since image has (0,0) in top left
     w = Window.from_slices((lat_to_pix(max_lat), lat_to_pix(min_lat)), (long_to_pix(min_long), long_to_pix(max_long)))
     mars_data = load_MOLA_DEM_data(w)
+    # flip about lat axis so min lat is at pos 0
+    mars_data = np.flip(mars_data, axis=0)
     return mars_data
 
 
@@ -83,8 +87,10 @@ def main():
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,6))
     im1 = ax1.imshow(mars_data_true, cmap='gray')
     fig.colorbar(im1, ax=ax1)
+    ax1.invert_yaxis()      # image format has (0,0) at the top left, but want top to be max lat
     im2 = ax2.imshow(mars_data_false, cmap='gray')
     fig.colorbar(im2, ax=ax2)
+    ax2.invert_yaxis()
     fig.savefig("data_import_test.png", dpi=300)
 
 
