@@ -36,6 +36,10 @@ def generate_yaml_input_file(sim_properties: Sim_Properties, experiment_name: st
 
 
 def heat_flux_mask(solid_tensor: torch.Tensor) -> torch.Tensor:
+    '''
+    Expect input tensor is int8.
+    '''
+    assert solid_tensor.dtype == torch.int8, "Expected input tensor type as int8."
     # need to use slice (:1) to preserve tensor shape
     # recall 0 index is bottom
     padded = torch.cat((torch.ones_like(solid_tensor[:, :, :1]), solid_tensor), dim=2)
@@ -43,10 +47,14 @@ def heat_flux_mask(solid_tensor: torch.Tensor) -> torch.Tensor:
     q_mask = padded[:, :, :-1] - padded[:, :, 1:]
     # make whole top z row = -1
     q_mask[:, :, -1] = -1
-    return q_mask.bool()
+    return q_mask
 
 
 def pad_tensor(input_tensor: torch.Tensor) -> torch.Tensor:
+    '''
+    Required input tensor not be boolean.
+    '''
+    assert input_tensor.dtype != torch.bool, "Padding does not work for boolean type tensors."
     temp = input_tensor.unsqueeze(0)
     temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode='replicate')
     temp = temp.squeeze(0)
@@ -173,8 +181,9 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     print(f"Forcing: {q_dot} W/m^2")
     # solid_tensor is NOT padded
     assert solid_tensor.shape != (nc3, nc2, nc1), "solid_tensor includes ghost zones where it shouldn't"
-    q_mask = heat_flux_mask(solid_tensor).to(device)
-    if debug: debug_plot(x1v[interior_geom], x2v[interior_geom], x3v[interior_geom], solid_tensor, q_mask, mars_data)
+    # solid_tensor can be either bool or int type depending on which branch of if/else, so convert to int8 (.char())
+    q_mask = heat_flux_mask(solid_tensor.char()).to(device)
+    if debug and mars_data is not None: debug_plot(x1v[interior_geom], x2v[interior_geom], x3v[interior_geom], solid_tensor, q_mask, mars_data)
     dz_inv = 1 / coord.buffer("dx1f")[0]
 
     block.make_outputs(block_vars, current_time)
