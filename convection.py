@@ -104,14 +104,14 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     q_mask = q_mask.cpu().numpy()
     mars_data = mars_data.cpu().numpy()
 
-    skip = 4
+    skip = 3
     fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
+    ax = fig.add_subplot(projection='3d', computed_zorder=False)
     # mars_data is converted to [long, lat] in assign_solid_tensor, but not in here
     # mars_data is [lat, long], all the other ones are [long, lat]
-    ax.plot_surface(x2v[:, :, 0], x3v[:, :, 0], mars_data, cmap='gray', alpha=0.6)
-    ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.4, c='blue')
-    ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.4, c='orange')
+    ax.plot_surface(x2v[:, :, 0], x3v[:, :, 0], mars_data, color='k', alpha=0.5, zorder=2)
+    ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.2, c='blue', zorder=1)
+    ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.2, c='orange', zorder=3)
     # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
     ax.set_xlabel("Longitude [m] -> W")
     ax.invert_xaxis()   # to match what a 2d plot looks like
