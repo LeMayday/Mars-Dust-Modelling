@@ -100,12 +100,13 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     q_mask = q_mask.cpu().numpy()
     mars_data = mars_data.cpu().numpy()
 
+    skip = 4
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
-    ax.plot_surface(x3v, x2v, mars_data, cmap='gray', alpha=0.6)
-    ax.scatter(x3v[solid_tensor == 1], x2v[solid_tensor == 1], x1v[solid_tensor == 1], s=1, alpha=0.3, c='blue')
-    ax.scatter(x3v[q_mask == 1], x2v[q_mask == 1], x1v[q_mask == 1], s=1, alpha=0.8, c='orange')
-    ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='light_blue')
+    ax.plot_surface(x3v[:, :, 0], x2v[:, :, 0], mars_data, cmap='gray', alpha=0.6)
+    ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.4, c='blue')
+    ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.4, c='orange')
+    # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
     fig.savefig('debug_terrain_plot.png', dpi=300, bbox_inches='tight')
 
 
