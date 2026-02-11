@@ -1,27 +1,18 @@
 import torch
-import math
-import time
-# IMPORTANT!! importing nc2pt after snapy causes a seg fault (for some reason)
-import nc2pt
-from configure_yaml import Sim_Properties, generate_yaml, get_num_cells_exp
+import torch.nn.functional as F
+from configure_yaml import Sim_Properties, generate_yaml, get_num_cells_exp, nghost
 from mars import *
 import kintera
-import snapy
 from snapy import MeshBlockOptions, MeshBlock
 from snapy import kIDN, kIV1, kIV2, kIV3, kIPR
 import os
 import argparse
-import re
 from mars_topography import get_cell_topography
+from typing import Tuple, Optional
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
-
-
-# assign some key values
-q_dot = s0 / 4      # heat flux
-q_dot = q_dot / 2
-print(f"Forcing: {q_dot} W/m^2")
+debug = False
 
 # following https://github.com/elijah-mullens/paddle/blob/main/docs/content/notebooks/Tutorial-Straka.ipynb
 def call_user_output(bvars, Rd, cp):
@@ -44,7 +35,68 @@ def generate_yaml_input_file(sim_properties: Sim_Properties, experiment_name: st
     return input_file
 
 
-def run_with(input_file: str, restart_file: str):
+def heat_flux_mask(solid_tensor: torch.Tensor) -> torch.Tensor:
+    # need to use slice (:1) to preserve tensor shape
+    # recall 0 index is bottom
+    padded = torch.cat((torch.ones_like(solid_tensor[:, :, :1]), solid_tensor), dim=2)
+    # padded[ignore top z] - padded[ignore bottom z]
+    q_mask = padded[:, :, :-1] - padded[:, :, 1:]
+    # make whole top z row = -1
+    q_mask[:, :, -1] = -1
+    return q_mask.bool()
+
+
+def pad_tensor(input_tensor: torch.Tensor) -> torch.Tensor:
+    temp = input_tensor.unsqueeze(0)
+    temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode='replicate')
+    temp = temp.squeeze(0)
+    return temp
+
+
+def assign_solid_tensor(cell_data: torch.Tensor, x1f: torch.Tensor) -> Tuple[torch.Tensor, float]:
+    '''
+    Cast celled topography data to tensor of 1s and 0s compatible with model geometry.
+    Also need to return min value to adjust reference pressure.
+    Assume x1f is just interior - want f for cell edge so lowest point can be at bottom row
+    '''
+    min_elevation = torch.min(cell_data)
+    # shift data up
+    cell_data = cell_data - min_elevation
+    nc_lat = cell_data.shape[0]
+    nc_long = cell_data.shape[1]
+    nc_height = x1f.shape[2]
+    # cell_data_shifted is [lat, long] and I want [long, lat, height]
+    cell_data = torch.transpose(cell_data, 0, 1).reshape(nc_long, nc_lat, 1)
+    # repeat in the height dimension by height of x1f
+    cell_data = cell_data.repeat(1, 1, nc_height)
+    # boolean mask with tensor of vertical heights
+    solid_data = cell_data > x1f
+    return solid_data, min_elevation
+
+
+def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
+               solid_tensor: torch.Tensor, q_mask: torch.Tensor, mars_data: torch.Tensor):
+    '''
+    Assumes x1v, x2v, and x3v are interior
+    '''
+    import matplotlib.pyplot as plt
+    x1v = x1v.cpu().numpy()
+    x2v = x2v.cpu().numpy()
+    x3v = x3v.cpu().numpy()
+    solid_tensor = solid_tensor.cpu().numpy()
+    q_mask = q_mask.cpu().numpy()
+    mars_data = mars_data.cpu().numpy()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.plot_surface(x3v, x2v, mars_data, cmap='gray', alpha=0.6)
+    ax.scatter(x3v[solid_tensor == 1], x2v[solid_tensor == 1], x1v[solid_tensor == 1], s=1, alpha=0.3, c='blue')
+    ax.scatter(x3v[q_mask == 1], x2v[q_mask == 1], x1v[q_mask == 1], s=1, alpha=0.8, c='orange')
+    ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='light_blue')
+    fig.savefig('debug_terrain_plot.png', dpi=300, bbox_inches='tight')
+
+
+def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
     # set hydrodynamic options
     print(f"Reading input file: {input_file}")
     # this still will set gas variables (weights, etc) from species list in yaml (see snapy equation_of_state.cpp line 66)
@@ -52,16 +104,19 @@ def run_with(input_file: str, restart_file: str):
     # initialize block
     block = MeshBlock(op)
     if torch.cuda.is_available() and op.layout().backend() == "nccl":
+        if debug: print("Attempting to use GPU")
         device = torch.device("cuda:0")
         print("device = ", device)
     else:
+        if debug: print("Using CPU")
         device = torch.device("cpu")
     block.to(device)
     interior = block.part((0, 0, 0))
+    interior_geom = interior[1:3]
 
     # get handles to modules
     coord = block.module("coord")
-    thermo = block.module("hydro.eos.thermo")
+    # thermo = block.module("hydro.eos.thermo")
     eos = block.module("hydro.eos")
 
     x3v, x2v, x1v = torch.meshgrid(
@@ -78,34 +133,62 @@ def run_with(input_file: str, restart_file: str):
     cp = cv + Rd
 
     block_vars = {}
-    if restart_file != '':
+    # define solid region, pad with ghost zones
+    if mars_data is not None:
+        # since x1v is stacked from meshgrid, without doing the same, can simply subtract the min value
+        x1f = x1v[interior_geom] - torch.min(x1v[interior_geom])
+        solid_tensor, min_elevation = assign_solid_tensor(mars_data.to(device), x1f.to(device))
+        solid_tensor = solid_tensor.to(device)
+        # need to pad tensor here
+        block_vars["solid"] = pad_tensor(solid_tensor.int()).to(device)
+    else:
+        # no topography
+        solid_tensor = torch.zeros_like(x1v[interior_geom]).to(device)
+    # determine how to initialize variables
+    if restart_file is not None:
+        print(f"Using restart file: {restart_file}")
         module = torch.jit.load(restart_file)
         for name, data in module.named_buffers():
             block_vars[name] = data.to(device)
     else:
-        w = torch.zeros((nvar, nc3, nc2, nc1), device=device)       # initialize primitive variables (density, vx, vy, vz, pressure)
-        temp = torch.full_like(x1v, Ts)                             # isothermal condition
+        print("Initializing block variables.")
+        # data is stored [x, y, z] so z is adjacent in memory, sometimes x is 1 (if 2D)
+        w = torch.zeros((nvar, nc3, nc2, nc1), device=device)                   # initialize primitive variables (density, vx, vy, vz, pressure)
+        temp = torch.full_like(x1v, Ts)                                         # isothermal condition
 
         # need to adjust x1v by where geopotential surface is
-        w[kIPR] = p0 * torch.exp(-grav * x1v / Rd / Ts)             # isothermal pressure
-        w[kIDN] = w[kIPR] / (Rd * temp)                             # ideal gas law
+        w[kIPR] = p0 * torch.exp(-grav * (x1v + min_elevation) / (Rd * Ts))     # isothermal pressure
+        w[kIDN] = w[kIPR] / (Rd * temp)                                         # ideal gas law
 
         # random initial velocity
-        w[interior][index.ivy] = torch.randn_like(w[interior][index.ivy])
+        w[interior][kIV2] = torch.randn_like(w[interior][kIV2])
 
         block_vars["hydro_w"] = w
         block_vars, current_time = block.initialize(block_vars)
 
+    # configure output
     block.set_user_output_func(lambda bvars: call_user_output(bvars, Rd, cp))
 
     # integration
+    print(f"Forcing: {q_dot} W/m^2")
+    # solid_tensor is NOT padded
+    assert solid_tensor.shape != (nc3, nc2, nc1), "solid_tensor includes ghost zones where it shouldn't"
+    q_mask = heat_flux_mask(solid_tensor).to(device)
+    if debug: debug_plot(x1v[interior_geom], x2v[interior_geom], x3v[interior_geom], solid_tensor, q_mask, mars_data)
+    dz_inv = 1 / coord.buffer("dx1f")[0]
+
     block.make_outputs(block_vars, current_time)
+    raise Exception("Oh no!")
     while not block.intg.stop(block.inc.cycle(), current_time):
         dt = block.max_time_step(block_vars)
         block.print_cycle_info(block_vars, current_time, dt)
 
-        for state in range(len(block.intg.stages)):
+        for stage in range(len(block.intg.stages)):
             block.forward(block_vars, dt, stage)
+            # indices are rho -> rho, vi -> rho*vi, pr -> e
+            u = block_vars["hydro_u"]
+            last_weight = block.intg.stages[stage].wght2()
+            u[interior][kIPR] += last_weight * q_dot * dz_inv * dt * q_mask
 
         err = block.check_redo(block_vars)
         if err > 0:
@@ -119,53 +202,32 @@ def run_with(input_file: str, restart_file: str):
     block.finalize(block_vars, current_time)
 
 
-# raise Exception("Oh no!")
-
-
-
-
-# dz for heat flux
-bottom_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][0])[interior[1:3]]
-bottom_row_height = bottom_row_height.to(device)
-top_row_height = torch.full((nc3, nc2), coord.buffer("dx1f")[interior[-1]][-1])[interior[1:3]]
-top_row_height = top_row_height.to(device)  
-
-    for stage in range(len(block.intg.stages)):
-        block.forward(dt, stage, block_vars)
-        u = block_vars["hydro_u"]
-        last_weight = block.intg.stages[stage].wght2()
-        u[interior][index.ipr][:, :, 0] += last_weight * q_dot / bottom_row_height * dt     # heating from the bottom
-        u[interior][index.ipr][:, :, -1] -= last_weight * q_dot / top_row_height * dt       # cooling from the top
-    
-    count += 1
-    current_time += dt
-
-print("elapsed time = ", time.time() - start_time)
-
 def main():
     # command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--experiment-name", required=True, type=str, help="Name of the experiment")
     parser.add_argument("-t", "--time-limit", required=True, type=int, help="Time limit for integration in seconds.")
     parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
-    parser.add_argument("-c", "--continue-from", type=str, help="Continue integrating from a file")
+    parser.add_argument("-r", "--restart-file", type=str, help="Continue integrating from a file")
     parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
     args = parser.parse_args()
     experiment_name = args.experiment_name
-    # 3D is not a valid python identifier, but it can be used as a dict key
-    # modify experiment name if 3D
     if vars(args)['3D']:
+        # 3D is not a valid python identifier, but it can be used as a dict key
+        # modify experiment name if 3D
         experiment_name = experiment_name + "_3D"
-    # determine restart file
-    restart_file = args.continue_from if args.continue_from is not None else ''
+    if debug: print(f"Experiment name: {experiment_name}")
     # determine topographical information
-    if args.lat_long_bounds is not None:
+    topography = args.lat_long_bounds is not None
+    if topography:
         nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
-        min_lat, max_lat, min_long, max_long = *args.lat_long_bounds
+        min_lat, max_lat, min_long, max_long = args.lat_long_bounds
+        if debug: print(f"Min lat: {min_lat}, max_lat: {max_lat}, min_long: {min_long}, max_long: {max_long}")
         # 2nd dim will be lat, 3rd dim will be long
+        # mars_data is a numpy array 
         mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
         Dx1 = Dx2 / nx2 * nx1
-        assert Dx1 >= 20E3, "Domain height is not >~ 1.5 Mars scale heights"
+        assert Dx1 >= 16E3, "Domain height is not >~ 1.5 Mars scale heights"
     else:
         Dx1 = 20E3
         Dx2 = 80E3
@@ -173,5 +235,13 @@ def main():
     sim_properties = Sim_Properties(Dx1, Dx2, Dx3, args.time_limit)
     # determine yaml input file
     input_file = generate_yaml_input_file(sim_properties, experiment_name)
+    if topography:
+        run_with(input_file, args.restart_file, torch.from_numpy(mars_data))
+    else:
+        run_with(input_file, args.restart_file)
     
+
+if __name__ == "__main__":
+    debug = True
+    main()
 
