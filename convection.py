@@ -78,7 +78,7 @@ def assign_solid_tensor(cell_data: torch.Tensor, x1f: torch.Tensor) -> torch.Ten
     nc_lat = cell_data.shape[0]
     nc_long = cell_data.shape[1]
     nc_height = x1f.shape[2]
-    # cell_data_shifted is [lat, long] and I want [long, lat, height]
+    # cell_data is [lat, long] and I want [long, lat, height]
     cell_data = torch.transpose(cell_data, 0, 1).reshape(nc_long, nc_lat, 1)
     # repeat in the height dimension by height of x1f
     cell_data = cell_data.repeat(1, 1, nc_height)
@@ -93,6 +93,7 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     Assumes x1v, x2v, and x3v are interior
     '''
     import matplotlib.pyplot as plt
+    import pickle
     x1v = x1v.cpu().numpy()
     x2v = x2v.cpu().numpy()
     x3v = x3v.cpu().numpy()
@@ -103,10 +104,15 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     skip = 4
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
-    ax.plot_surface(x3v[:, :, 0], x2v[:, :, 0], mars_data, cmap='gray', alpha=0.6)
+    # mars_data is converted to [long, lat] in assign_solid_tensor, but not in here
+    # mars_data is [lat, long], all the other ones are [long, lat]
+    ax.plot_surface(x2v[:, :, 0], x3v[:, :, 0], mars_data, cmap='gray', alpha=0.6)
     ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.4, c='blue')
     ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.4, c='orange')
     # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
+    ax.view_init(elev=20, azim=65)
+    with open('FigureObject.fig.pickle', 'wb') as f:
+        pickle.dump(fig, f)
     fig.savefig('debug_terrain_plot.png', dpi=300, bbox_inches='tight')
 
 
