@@ -110,7 +110,11 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.4, c='blue')
     ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.4, c='orange')
     # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
-    ax.view_init(elev=20, azim=65)
+    ax.set_xlabel("Longitude [m] -> W")
+    ax.invert_xaxis()   # to match what a 2d plot looks like
+    ax.set_ylabel("N <- Latitude [m]")
+    ax.invert_yaxis()
+    ax.view_init(elev=10, azim=65)
     with open('FigureObject.fig.pickle', 'wb') as f:
         pickle.dump(fig, f)
     fig.savefig('debug_terrain_plot.png', dpi=300, bbox_inches='tight')
