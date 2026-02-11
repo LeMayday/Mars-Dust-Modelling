@@ -94,6 +94,9 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     '''
     import matplotlib.pyplot as plt
     import pickle
+    x1f = x1v - torch.min(x1v)
+    # surface is computed using x1f, redefine x1v = x1f since I wrote plotting code with x1v first
+    x1v = x1f
     x1v = x1v.cpu().numpy()
     x2v = x2v.cpu().numpy()
     x3v = x3v.cpu().numpy()
