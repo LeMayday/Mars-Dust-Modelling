@@ -5,9 +5,12 @@ from typing import NamedTuple   # immutable class (like const struct)
 from mars import grav
 from typing import Tuple
 
+nghost = 3
+
 class Res(Enum):
     COURSE = 'course'
     FINE = 'fine'
+
 
 class Sim_Properties(NamedTuple):
     Dx1: int
@@ -17,6 +20,7 @@ class Sim_Properties(NamedTuple):
     reference_state_dict = {'Tref': 0, 'Pref': 1E5}
     species = [{'name': 'dry', 'composition': {'C': 0.95, 'O': 1.90, 'N': 0.06, 'Ar': 0.02}, 'cv_R': 3.4}]
 
+
 def get_res_multiplier(res: Res):
     assert(res in Res)
     match res:
@@ -25,8 +29,10 @@ def get_res_multiplier(res: Res):
         case Res.FINE:
             return 2
 
+
 def is_implicit(exp_name: str) -> bool:
     return exp_name[0] == 'I'
+
 
 def get_exp_res(exp_name: str) -> Res:
     match exp_name[1]:
@@ -35,11 +41,14 @@ def get_exp_res(exp_name: str) -> Res:
         case 'F':
             return Res.FINE
 
+
 def is_3D(exp_name: str) -> bool:
     return '_3D' in exp_name
 
+
 def get_num_cells_exp(exp_name: str) -> Tuple[int, int, int]:
     return get_num_cells(get_exp_res(exp_name), is_3D(exp_name))
+
 
 def get_num_cells(res: Res, threeD: bool) -> Tuple[int, int, int]:
     res_multiplier = get_res_multiplier(res)
@@ -47,6 +56,7 @@ def get_num_cells(res: Res, threeD: bool) -> Tuple[int, int, int]:
     nx2 = 256 * res_multiplier
     nx3 = 256 * res_multiplier if threeD else 1
     return nx1, nx2, nx3
+
 
 def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, threeD: bool):
     # define geometry
@@ -65,7 +75,7 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                      'bounds': {'x1min': x1min, 'x1max': x1max,
                                 'x2min': x2min, 'x2max': x2max,
                                 'x3min': x3min, 'x3max': x3max},
-                     'cells':  {'nx1': nx1, 'nx2': nx2, 'nx3': nx3, 'nghost': 3}}
+                     'cells':  {'nx1': nx1, 'nx2': nx2, 'nx3': nx3, 'nghost': nghost}}
 
     # define dynamics
 
@@ -137,6 +147,7 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                        'outputs': outputs_dict}
     return full_dictionary
 
+
 def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str) -> str:
     # Note: output files are generated with a basename that is the same as the yaml file
     # snapy 1.2.6 meshblock_options.cpp line 19 and netcdf.cpp line 86
@@ -145,6 +156,7 @@ def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str)
     full_dictionary = configure_yaml(sim_properties, is_implicit(exp_name), get_exp_res(exp_name), is_3D(exp_name))
     save_yaml(file_path, full_dictionary)
     return file_path
+
 
 def save_yaml(file_path, dictionary):
     with open(file_path, "w") as file_handler:
