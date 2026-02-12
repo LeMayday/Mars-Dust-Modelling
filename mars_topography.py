@@ -46,7 +46,7 @@ def get_region_topography(min_lat, max_lat, min_long, max_long) -> NDArray:
 
     # (max_lat, min_lat) is right for viewing, but not for data being stored in order of increasing latitude
     # need to window (max_lat, min_lat) since image has (0,0) in top left
-    w = Window.from_slices((lat_to_pix(max_lat), lat_to_pix(min_lat)), (long_to_pix(min_long), long_to_pix(max_long)))
+    w = Window.from_slices((lat_to_pix(max_lat), lat_to_pix(min_lat) + 1), (long_to_pix(min_long), long_to_pix(max_long) + 1))
     mars_data = load_MOLA_DEM_data(w)
     # flip about lat axis so min lat is at pos 0
     mars_data = np.flip(mars_data, axis=0)
@@ -61,11 +61,11 @@ def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num
     num_pixels_lat = mars_data.shape[0]
     num_pixels_long = mars_data.shape[1]
 
-    lat_idx = np.arange(num_pixels_lat)     # get indices of data pts in lat (y)
-    long_idx = np.arange(num_pixels_long)    # get indices of data pts in long (x)
+    lat_idx = np.arange(num_pixels_lat)         # get indices of data pts in lat (y)
+    long_idx = np.arange(num_pixels_long)       # get indices of data pts in long (x)
 
-    lat_sample = (np.arange(num_cells_lat) + 0.5) / num_cells_lat * num_pixels_lat      # sample for num_cells_lat boxes in the center
-    long_sample = (np.arange(num_cells_long) + 0.5) / num_cells_long * num_pixels_long   # sample for num_cells_long boxes in the center
+    lat_sample = (np.arange(num_cells_lat) + 0.5) / num_cells_lat * (num_pixels_lat - 1)        # sample for num_cells_lat boxes in the center
+    long_sample = (np.arange(num_cells_long) + 0.5) / num_cells_long * (num_pixels_long - 1)    # sample for num_cells_long boxes in the center
     Lats, Longs = np.meshgrid(lat_sample, long_sample, indexing='ij')
     sample_pts = np.vstack([Lats.ravel(), Longs.ravel()]).T
     cell_data = interpn((lat_idx, long_idx), mars_data, sample_pts, method='splinef2d')
@@ -76,10 +76,10 @@ def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num
 
 def main():
     import matplotlib.pyplot as plt
-    min_lat = -35
-    max_lat = -25
-    min_long = 70
-    max_long = 80
+    min_lat = -31 #-35
+    max_lat = -29 #-25
+    min_long = 74 #70
+    max_long = 76 #80
 
     # reference region against https://oderest.rsl.wustl.edu/GDSWeb/GDSMOLAPEDR.html
     mars_data_true = get_region_topography(min_lat, max_lat, min_long, max_long)
@@ -91,7 +91,7 @@ def main():
     im2 = ax2.imshow(mars_data_false, cmap='gray')
     fig.colorbar(im2, ax=ax2)
     ax2.invert_yaxis()
-    fig.savefig("data_import_test.png", dpi=300)
+    fig.savefig("output/data_import_test.png", dpi=300)
 
 
 if __name__ == "__main__":
