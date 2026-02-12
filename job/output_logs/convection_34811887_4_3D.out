@@ -1,4 +1,0 @@
-Reading input file: convection_D_3D.yaml
-count = 0, dt = 0.38295208155014804, time = 0.0
-mass =  tensor(101592.2485, device='cuda:0')
-6277.57 allocated, 13.8%, 7352.00 reserved
