@@ -19,6 +19,7 @@ def call_user_output(bvars, Rd, cp):
     hydro_w = bvars["hydro_w"]
     out = {}
     temp = hydro_w[kIPR] / (Rd * hydro_w[kIDN])
+    # user defined variables: temp and potential temp
     out["temp"] = temp
     out["theta"] = temp * (p0 / hydro_w[kIPR]).pow(Rd / cp)
     return out
@@ -52,12 +53,19 @@ def heat_flux_mask(solid_tensor: torch.Tensor) -> torch.Tensor:
 
 def pad_tensor(input_tensor: torch.Tensor) -> torch.Tensor:
     '''
-    Required input tensor not be boolean.
+    Requires input tensor not be boolean.
     '''
     assert input_tensor.dtype != torch.bool, "Padding does not work for boolean type tensors."
-    temp = input_tensor.unsqueeze(0)
-    temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode='replicate')
-    temp = temp.squeeze(0)
+    assert input_tensor.ndim == 3, "Function is not defined for non-3D tensors"
+    if input_tensor.shape[0] != 1:      # 3D
+        # pad in 3D only works for 4D tensor-- add/remove dummy dimension
+        # pads last 3 dims of 4D tensor
+        temp = input_tensor.unsqueeze(0)
+        temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode='replicate')
+        temp = temp.squeeze(0)
+    else:                               # 2D
+        # pads last 2 dims of 3D tensor
+        temp = F.pad(input_tensor, (nghost, nghost, nghost, nghost), mode='replicate')
     return temp
 
 
@@ -104,23 +112,33 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     q_mask = q_mask.cpu().numpy()
     mars_data = mars_data.cpu().numpy()
 
-    skip = 3
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d', computed_zorder=False)
-    # mars_data is converted to [long, lat] in assign_solid_tensor, but not in here
-    # mars_data is [lat, long], all the other ones are [long, lat]
-    ax.plot_surface(x2v[:, :, 0], x3v[:, :, 0], mars_data, color='k', alpha=0.5, zorder=2)
-    ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.2, c='blue', zorder=1)
-    ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.2, c='orange', zorder=3)
-    # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
-    ax.set_xlabel("Longitude [m] -> W")
-    ax.invert_xaxis()   # to match what a 2d plot looks like
-    ax.set_ylabel("N <- Latitude [m]")
-    ax.invert_yaxis()
-    ax.view_init(elev=10, azim=65)
-    with open('FigureObject.fig.pickle', 'wb') as f:
-        pickle.dump(fig, f)
-    fig.savefig('debug_terrain_plot.png', dpi=300, bbox_inches='tight')
+    if solid_tensor.shape[0] != 1:      # 3D
+        skip = 3
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d', computed_zorder=False)
+        # mars_data is converted to [long, lat] in assign_solid_tensor, but not in here
+        # mars_data is [lat, long], all the other ones are [long, lat]
+        ax.plot_surface(x2v[:, :, 0], x3v[:, :, 0], mars_data, color='k', alpha=0.5, zorder=2)
+        ax.scatter(x3v[solid_tensor == 1][::skip], x2v[solid_tensor == 1][::skip], x1v[solid_tensor == 1][::skip], s=0.5, alpha=0.2, c='blue', zorder=1)
+        ax.scatter(x3v[q_mask == 1][::skip], x2v[q_mask == 1][::skip], x1v[q_mask == 1][::skip], s=0.5, alpha=0.2, c='orange', zorder=3)
+        # ax.scatter(x3v[q_mask == -1], x2v[q_mask == -1], x1v[q_mask == -1], s=1, alpha=0.8, c='lightblue')
+        ax.set_xlabel("Longitude [m] -> W")
+        ax.invert_xaxis()   # to match what a 2d plot looks like
+        ax.set_ylabel("N <- Latitude [m]")
+        ax.invert_yaxis()
+        ax.view_init(elev=10, azim=65)
+        filename = "debug_terrain_plot_3D.png"
+        with open('FigureObject.fig.pickle', 'wb') as f:
+            pickle.dump(fig, f)
+    else:
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.plot(x2v[0, :, 0], mars_data[:, 0], color='k')
+        ax.scatter(x2v[0, :, :][solid_tensor[0, :, :] == 1], x1v[0, :, :][solid_tensor[0, :, :] == 1], s=0.5, c='blue')
+        ax.scatter(x2v[0, :, :][q_mask[0, :, :] == 1], x1v[0, :, :][q_mask[0, :, :] == 1], s=0.5, c='orange')
+        ax.set_xlabel("Latitude [m] -> N")
+        filename = "debug_terrain_plot_2D.png"
+    fig.savefig(filename, dpi=300, bbox_inches='tight')
 
 
 def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
@@ -169,7 +187,7 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
         solid_tensor = assign_solid_tensor(mars_data.to(device), x1f.to(device))
         solid_tensor = solid_tensor.to(device)
         # need to pad tensor here, tensor must be boolean
-        block_vars["solid"] = pad_tensor(solid_tensor.char()).bool().to(device)
+        block_vars["solid"] = pad_tensor(solid_tensor.char()).bool()
     else:
         # no topography
         solid_tensor = torch.zeros_like(x1v[interior_geom]).to(device)
@@ -243,8 +261,8 @@ def main(args):
     parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
     args = parser.parse_args(args)
     experiment_name = args.experiment_name
-    if vars(args)['3D']:
-        # 3D is not a valid python identifier, but it can be used as a dict key
+    threeD = vars(args)['3D']       # 3D is not a valid python identifier, but it can be used as a dict key
+    if threeD:
         # modify experiment name if 3D
         experiment_name = experiment_name + "_3D"
     if debug: print(f"Experiment name: {experiment_name}")
@@ -283,6 +301,9 @@ if __name__ == "__main__":
         print("--- RUNNING IN DEBUG MODE ---")
         debug = True
         # copied from print statement for test arguments I've been using
-        extras = ['-e', 'IC', '-t', '43200', '--3D', '-l', '-35', '-25', '70', '80']
+        if '--3D' in extras:
+            extras = ['-e', 'IC', '-t', '43200', '--3D', '-l', '-35', '-25', '70', '80']
+        else:
+            extras = ['-e', 'IC', '-t', '43200', '-l', '-35', '-25', '70', '80']
     main(extras)
 
