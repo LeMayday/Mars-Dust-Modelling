@@ -7,5 +7,5 @@ Ts = -31 + 273      # average surface temperature
 s0 = 580;           # W / m^2
 # Teq = (s0 / 5.67E-8 / 4) ** (1/4)
 q_dot = s0 / 4      # heat flux
-q_dot = q_dot / 2
+# q_dot = q_dot / 2
 
