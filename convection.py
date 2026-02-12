@@ -227,8 +227,8 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     dz_inv = 1 / coord.buffer("dx1f")[0]
 
     block.make_outputs(block_vars, current_time)
-    raise Exception("Oh no!")
-    while not block.intg.stop(block.inc.cycle(), current_time):
+    if debug: return
+    while not block.intg.stop(block.inc_cycle(), current_time):
         dt = block.max_time_step(block_vars)
         block.print_cycle_info(block_vars, current_time, dt)
 
