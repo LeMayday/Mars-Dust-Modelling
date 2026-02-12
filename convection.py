@@ -138,7 +138,7 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
         ax.scatter(x2v[0, :, :][q_mask[0, :, :] == 1], x1v[0, :, :][q_mask[0, :, :] == 1], s=0.5, c='orange')
         ax.set_xlabel("Latitude [m] -> N")
         filename = "debug_terrain_plot_2D.png"
-    fig.savefig(filename, dpi=300, bbox_inches='tight')
+    fig.savefig("output/" + filename, dpi=300, bbox_inches='tight')
 
 
 def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
@@ -265,17 +265,18 @@ def main(args):
     if threeD:
         # modify experiment name if 3D
         experiment_name = experiment_name + "_3D"
-    if debug: print(f"Experiment name: {experiment_name}")
+    print(f"Experiment name: {experiment_name}")
     # determine topographical information
     topography = args.lat_long_bounds is not None
     if topography:
         nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
         min_lat, max_lat, min_long, max_long = args.lat_long_bounds
-        if debug: print(f"Min lat: {min_lat}, max_lat: {max_lat}, min_long: {min_long}, max_long: {max_long}")
+        print(f"Min lat: {min_lat}, max_lat: {max_lat}, min_long: {min_long}, max_long: {max_long}")
         # 2nd dim will be lat, 3rd dim will be long
         # mars_data is a numpy array 
         mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
-        Dx1 = Dx2 / nx2 * nx1
+        # Dx1 = Dx2 / nx2 * nx1
+        Dx1 = 20E3
         assert Dx1 >= 16E3, "Domain height is not >~ 1.5 Mars scale heights"
         # TODO: need a way to appropriately choose atmospheric height if vertical domain is very large
         print(Dx1, Dx2, Dx3)
@@ -302,7 +303,7 @@ if __name__ == "__main__":
         debug = True
         # copied from print statement for test arguments I've been using
         if '--3D' in extras:
-            extras = ['-e', 'IC', '-t', '43200', '--3D', '-l', '-35', '-25', '70', '80']
+            extras = ['-e', 'IC', '-t', '43200', '--3D', '-l', '-31', '-29', '74', '76']
         else:
             extras = ['-e', 'IC', '-t', '43200', '-l', '-35', '-25', '70', '80']
     main(extras)
