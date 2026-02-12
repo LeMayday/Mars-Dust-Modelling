@@ -148,12 +148,12 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     op = MeshBlockOptions.from_yaml(input_file)
     # initialize block
     block = MeshBlock(op)
-    if torch.cuda.is_available() and op.layout().backend() == "nccl":
-        if debug: print("Attempting to use GPU")
+    if torch.cuda.is_available(): # and op.layout().backend() == "nccl":
+        print("Attempting to use GPU")
         device = torch.device("cuda:0")
         print("device = ", device)
     else:
-        if debug: print("Using CPU")
+        print("Using CPU")
         device = torch.device("cpu")
     block.to(device)
     interior = block.part((0, 0, 0))
