@@ -7,7 +7,7 @@ from snapy import MeshBlockOptions, MeshBlock
 from snapy import kIDN, kIV1, kIV2, kIV3, kIPR
 import os
 import argparse
-from mars_topography import get_cell_topography
+from mars_topography import get_cell_topography, format_lat_long_string
 from typing import Tuple, Optional
 
 torch.set_default_dtype(torch.float64)
@@ -265,13 +265,13 @@ def main(args):
     if threeD:
         # modify experiment name if 3D
         experiment_name = experiment_name + "_3D"
-    print(f"Experiment name: {experiment_name}")
     # determine topographical information
     topography = args.lat_long_bounds is not None
     if topography:
         nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
         min_lat, max_lat, min_long, max_long = args.lat_long_bounds
-        print(f"Min lat: {min_lat}, max_lat: {max_lat}, min_long: {min_long}, max_long: {max_long}")
+        # must append lat/long at the end since other functions look at first two chars for I/E and C/F
+        experiment_name = experiment_name + "_" + format_lat_long_string(min_lat, max_lat, min_long, max_long)
         # 2nd dim will be lat, 3rd dim will be long
         # mars_data is a numpy array 
         mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
@@ -284,6 +284,7 @@ def main(args):
         Dx1 = 20E3
         Dx2 = 80E3
         Dx3 = 80E3
+    print(f"Experiment name: {experiment_name}")
     sim_properties = Sim_Properties(Dx1, Dx2, Dx3, args.time_limit)
     # determine yaml input file
     input_file = generate_yaml_input_file(sim_properties, experiment_name)

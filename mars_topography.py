@@ -74,6 +74,12 @@ def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num
     return cell_data, m_per_px * num_pixels_lat, m_per_px * num_pixels_long 
 
 
+def format_lat_long_string(min_lat, max_lat, min_long, max_long) -> str:
+    conv_lat = lambda lat: f"{abs(lat)}" + ("N" if lat >= 0 else "S")
+    conv_long = lambda lon: f"{abs(lon)}" + ("W" if lon >= 0 else "E")
+    return f"{conv_lat(min_lat)}{conv_long(min_long)}{conv_lat(max_lat)}{conv_long(max_long)}"
+
+
 def main():
     import matplotlib.pyplot as plt
     min_lat = -31 #-35
