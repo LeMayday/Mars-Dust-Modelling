@@ -224,18 +224,18 @@ def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Opt
     # solid_tensor can be either bool or int type depending on which branch of if/else, so convert to int8 (.char())
     q_mask = heat_flux_mask(solid_tensor.char()).to(device)
     if debug and mars_data is not None: debug_plot(x1v[interior_geom], x2v[interior_geom], x3v[interior_geom], solid_tensor, q_mask, mars_data)
-    dz_inv = 1 / coord.buffer("dx1f")[0]
-
-    block.make_outputs(block_vars, current_time)
     if debug: return
+
+    dz_inv = 1 / coord.buffer("dx1f")[0]
+    block.make_outputs(block_vars, current_time)
     while not block.intg.stop(block.inc_cycle(), current_time):
         dt = block.max_time_step(block_vars)
         block.print_cycle_info(block_vars, current_time, dt)
 
+        u = block_vars["hydro_u"]
         for stage in range(len(block.intg.stages)):
             block.forward(block_vars, dt, stage)
             # indices are rho -> rho, vi -> rho*vi, pr -> e
-            u = block_vars["hydro_u"]
             last_weight = block.intg.stages[stage].wght2()
             u[interior][kIPR] += last_weight * q_dot * dz_inv * dt * q_mask
 
