@@ -8,6 +8,9 @@ from matplotlib.axes import Axes
 import os
 import argparse
 from typing import List, Tuple
+from configure_yaml import is_implicit, is_3D, get_exp_res, Res
+from mars import grav, gamma, M_bar, R_gas, q_dot 
+
 
 def get_nc_files(directory):
     out2_files = []
@@ -21,6 +24,7 @@ def get_nc_files(directory):
                 elif "out3" in root:
                     out3_files.append(os.path.join(directory, filename))
     return out2_files, out3_files
+
 
 def averaged_exp_data(exp_name: str, num_files: int) -> Tuple[xr.Dataset, xr.Dataset]:
     nc2_files, nc3_files = get_nc_files(f"output_{exp_name}")
@@ -37,28 +41,20 @@ def averaged_exp_data(exp_name: str, num_files: int) -> Tuple[xr.Dataset, xr.Dat
     nc3_data_concat: xr.Dataset = xr.concat(nc3_data, dim='time')
     return nc2_data_concat.mean('time'), nc3_data_concat.mean('time')
 
+
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
-g = 3.73
-cp = 842
-s0 = 580;           # W / m^2
-q_dot = s0 / 4      # heat flux
+cp = gamma * R_gas / M_bar / (gamma - 1)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--experiment-names", required=True, type=str, nargs='+', help="Name of the experiments to analyze as one string (e.g. ACD)")
-group = parser.add_mutually_exclusive_group()
-group.add_argument("--3D", action="store_true", help="Whether to use 3D data")
-group.add_argument("--compare-with", type=str, nargs='+', default="", help="List of 3D data to compare with")
+parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
 parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
 parser.add_argument("-i", "--index", type=str, default="", help="Index for file naming (in case of duplicate names)")
 args = parser.parse_args()
 file_index = args.index
 if file_index is not "": file_index = "_" + file_index
 experiment_names = args.experiment_names
-compare_names = args.compare_with
-if vars(args)['3D']:
-    experiment_names = [exp_name + "_3D" for exp_name in experiment_names]
-elif len(compare_names) > 0:
-    experiment_names = experiment_names + [exp_name + "_3D" for exp_name in compare_names]
+lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
 num_files = args.num_file
 
 # make plot output directory if it doesn't already exist
@@ -69,13 +65,13 @@ except FileExistsError:
     pass
 
 plot_dict = {}
-plot_dict["vert_temp_theta"] = {"flag": 1, "subplots": [1, 2]}
-plot_dict["hori_theta"] = {"flag": 1, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"] = {"flag": 1, "subplots": [5, 1]}
-plot_dict["hori_vel"] = {"flag": 1, "subplots": [1, 1]}
-plot_dict["gravity_wave"] = {"flag": 1, "subplots": [1, 1]}
-plot_dict["KE_flux"] = {"flag": 1, "subplots": [1, 1]}
-plot_dict["KE_power"] = {"flag": 1, "subplots": [1, 3]}
+plot_dict["vert_temp_theta"]    = {"flag": 1, "subplots": [1, 2]}
+plot_dict["hori_theta"]         = {"flag": 1, "subplots": [3, 1]}
+plot_dict["vert_vel_dist"]      = {"flag": 1, "subplots": [5, 1]}
+plot_dict["hori_vel"]           = {"flag": 1, "subplots": [1, 1]}
+plot_dict["gravity_wave"]       = {"flag": 1, "subplots": [1, 1]}
+plot_dict["KE_flux"]            = {"flag": 1, "subplots": [1, 1]}
+plot_dict["KE_power"]           = {"flag": 1, "subplots": [1, 3]}
 
 skip_main_loop = True
 for key, value in plot_dict.items():
@@ -95,18 +91,16 @@ for key, value in plot_dict.items():
 # configure plot coloring
 linestyles = {"color": [], "style": [], "marker": [], "comb": []}
 for exp in experiment_names:
-    if "E" in exp:
-        color = 'b'
-    elif "I" in exp:
+    if is_implicit(exp):
         color = 'r'
-    if "C" in exp:
+    else:
+        color = 'b'
+    if get_exp_res(exp) == Res.COURSE:
         style = '--'
         marker = 'v'
-    elif "F" in exp:
+    elif get_exp_res(exp) == Res.FINE:
         style = "-"
         marker = 'o'
-    if "45" in exp:
-        color = 'y'
     linestyles["color"].append(color)
     linestyles["style"].append(style)
     linestyles["marker"].append(marker)
@@ -220,7 +214,7 @@ for i, exp in enumerate(experiment_names):
                 mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
 
                 ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyles["comb"][i])
-                if not "3D" in exp and i == last:
+                if not is_3D(exp) and i == last:
                     ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
                     legend_labels.append('Forcing')
 
@@ -248,7 +242,7 @@ for i, exp in enumerate(experiment_names):
                     u = nc2_data['vel3'].isel(x1=idxs[j])
                     v = nc2_data['vel2'].isel(x1=idxs[j])
                     w = nc2_data['vel1'].isel(x1=idxs[j])
-                    if "3D" in exp:
+                    if is_3D(exp):
                         kx2 = np.fft.fftfreq(nx2, d=1/Fs2)
                         kx2 = np.fft.fftshift(kx2)
                         kx3 = np.fft.fftfreq(nx3, d=1/Fs3)
@@ -349,11 +343,6 @@ for key, value in plot_dict.items():
     if not value["flag"]:
         continue
     fig: Figure = value["fig"]
-    if vars(args)['3D']:
-        output_file = f"{key}_steady_state_3D{file_index}.png"
-    elif len(compare_names) > 0:
-        output_file = f"{key}_steady_state_2D_3D{file_index}.png"
-    else:
-        output_file = f"{key}_steady_state{file_index}.png"
+    output_file = f"{key}_ss{file_index}.png"
     fig.savefig(f"{save_directory}/{output_file}", dpi=300)
     plt.close(fig)
