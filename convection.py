@@ -25,8 +25,11 @@ def call_user_output(bvars, Rd, cp):
     return out
 
 
-def generate_yaml_input_file(sim_properties: Sim_Properties, experiment_name: str) -> str:
-    output_dir = f"output_{experiment_name}"
+def generate_yaml_input_file(sim_properties: Sim_Properties, experiment_name: str, output_parent_dir: Optional[str] = None) -> str:
+    if output_parent_dir is not None:
+        output_dir = f"{output_parent_dir}/output_{experiment_name}"
+    else:
+        output_dir = f"output_{experiment_name}"
     try:
         os.mkdir(output_dir)
     except FileExistsError:
@@ -141,11 +144,13 @@ def debug_plot(x1v: torch.Tensor, x2v: torch.Tensor, x3v: torch.Tensor,
     fig.savefig("output/" + filename, dpi=300, bbox_inches='tight')
 
 
-def run_with(input_file: str, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
+def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
     # set hydrodynamic options
     print(f"Reading input file: {input_file}")
     # this still will set gas variables (weights, etc) from species list in yaml (see snapy equation_of_state.cpp line 66)
     op = MeshBlockOptions.from_yaml(input_file)
+    print(f"Setting output directory: {output_dir}")
+    op.output_dir(output_dir)
     # initialize block
     block = MeshBlock(op)
     if torch.cuda.is_available(): # and op.layout().backend() == "nccl":
@@ -259,6 +264,7 @@ def main(args):
     parser.add_argument("--3D", action="store_true", help="Whether to perform a 3D experiment")
     parser.add_argument("-r", "--restart-file", type=str, help="Continue integrating from a file")
     parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
+    parser.add_argument("-o", "--output-parent-dir", type=str, default = ".", help="Directory for output files.")
     args = parser.parse_args(args)
     experiment_name = args.experiment_name
     threeD = vars(args)['3D']       # 3D is not a valid python identifier, but it can be used as a dict key
@@ -287,11 +293,12 @@ def main(args):
     print(f"Experiment name: {experiment_name}")
     sim_properties = Sim_Properties(Dx1, Dx2, Dx3, args.time_limit)
     # determine yaml input file
-    input_file = generate_yaml_input_file(sim_properties, experiment_name)
+    input_file = generate_yaml_input_file(sim_properties, experiment_name, args.output_parent_dir)
+    output_dir = f"{args.output_parent_dir}/output_{experiment_name}"
     if topography:
-        run_with(input_file, args.restart_file, torch.from_numpy(mars_data))
+        run_with(input_file, output_dir, args.restart_file, torch.from_numpy(mars_data))
     else:
-        run_with(input_file, args.restart_file)
+        run_with(input_file, output_dir, args.restart_file)
     
 
 if __name__ == "__main__":
