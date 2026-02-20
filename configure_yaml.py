@@ -131,9 +131,9 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
 
     # define outputs
 
-    # generate restart file every hour, generate nc file every 10 mins
-    outputs_dict = [{'type': 'restart', 'dt': 3600},
-                    {'type': 'netcdf', 'variables': ['prim', 'uov'], 'dt': 600}]
+    # generate restart file every three hours, generate nc file every 30 mins
+    outputs_dict = [{'type': 'restart', 'dt': 10800},
+                    {'type': 'netcdf', 'variables': ['prim', 'uov'], 'dt': 1800}]
 
     full_dictionary = {'reference-state': Sim_Properties.reference_state_dict,
                        'species': Sim_Properties.species,
