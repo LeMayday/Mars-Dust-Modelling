@@ -197,12 +197,16 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
         # no topography
         solid_tensor = torch.zeros_like(x1v[interior_geom]).to(device)
         min_elevation = 0
+
     # determine how to initialize variables
     if restart_file is not None:
         print(f"Using restart file: {restart_file}")
-        module = torch.jit.load(restart_file)
-        for name, data in module.named_buffers():
-            block_vars[name] = data.to(device)
+        # current_time is the simulation time of the restart file
+        block_vars, current_time = block.initialize_from_restart(restart_file)
+        for key, val in block_vars.items():
+            block_vars[key] = val.to(device)
+        if "final" in restart_file:     # if restarting from the final file, extend time limit
+            block.options.intg().tlim(current_time + block.options.intg().tlim())
     else:
         print("Initializing block variables.")
         # data is stored [x, y, z] so z is adjacent in memory, sometimes x is 1 (if 2D)
@@ -210,6 +214,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
         temp = torch.full_like(x1v, Ts)                                         # isothermal condition
 
         # need to adjust x1v by where geopotential surface is
+        print(f"Reference P: {p0} Pa, Reference T: {Ts}")
         w[kIPR] = p0 * torch.exp(-grav * (x1v + min_elevation) / (Rd * Ts))     # isothermal pressure
         w[kIDN] = w[kIPR] / (Rd * temp)                                         # ideal gas law
 
