@@ -7,307 +7,197 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import os
 import argparse
-from typing import List, Tuple
+from typing import List, Dict, TypedDict
 from configure_yaml import is_implicit, is_3D, get_exp_res, Res
+from mars_topography import format_lat_long_string
 from mars import grav, gamma, M_bar, R_gas, q_dot 
+# for some reason, importing kintera and snapy makes the code not work due to some h5py issue
+cp = gamma * R_gas / M_bar / (gamma - 1)
 
 
-def get_nc_files(directory):
-    out2_files = []
-    out3_files = []
+class Analysis_Config(TypedDict):
+    flag: bool
+    subplots: List[int]
+
+
+def get_nc_files(directory: str) -> List[str]:
+    out_files = []
     for filename in sorted(os.listdir(directory)):
         if os.path.isfile(os.path.join(directory, filename)):
             root, ext = os.path.splitext(filename)
             if ext.lower() == ".nc":
-                if "out2" in root:
-                    out2_files.append(os.path.join(directory, filename))
-                elif "out3" in root:
-                    out3_files.append(os.path.join(directory, filename))
-    return out2_files, out3_files
+                out_files.append(os.path.join(directory, filename))
+    return out_files
 
 
-def averaged_exp_data(exp_name: str, num_files: int) -> Tuple[xr.Dataset, xr.Dataset]:
-    nc2_files, nc3_files = get_nc_files(f"output_{exp_name}")
-    nc2_data = []
-    for nc2 in nc2_files[-num_files:]:
-        with xr.open_dataset(nc2) as ds:
-            nc2_data.append(ds)
-    nc2_data_concat: xr.Dataset = xr.concat(nc2_data, dim='time')
-
-    nc3_data = []
-    for nc3 in nc3_files[-num_files:]:
-        with xr.open_dataset(nc3) as ds:
-            nc3_data.append(ds)
-    nc3_data_concat: xr.Dataset = xr.concat(nc3_data, dim='time')
-    return nc2_data_concat.mean('time'), nc3_data_concat.mean('time')
+def averaged_exp_data(file_path: str, num_files: int) -> xr.Dataset:
+    nc_files = get_nc_files(file_path)
+    nc_data = []
+    for nc in nc_files[-num_files:]:
+        with xr.open_dataset(nc) as ds:
+            nc_data.append(ds)
+    nc_data_concat: xr.Dataset = xr.concat(nc_data, dim='time')
+    return nc_data_concat.mean('time')
 
 
-# for some reason, importing kintera and snapy makes the code not work due to some h5py issue
-cp = gamma * R_gas / M_bar / (gamma - 1)
+def plot_vert_temp_theta(analysis_dict: Analysis_Config, temp: xr.Dataset, theta: xr. Dataset, linestyle: str, legend_labels: List[str], last: bool):
+    ax1: Axes = analysis_dict["ax1"]
+    ax1.set_title("Temp")
+    ax2: Axes = analysis_dict["ax2"]
+    ax2.set_title("Theta")
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--experiment-names", required=True, type=str, nargs='+', help="Name of the experiments to analyze as one string (e.g. ACD)")
-parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
-parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
-parser.add_argument("-i", "--index", type=str, default="", help="Index for file naming (in case of duplicate names)")
-args = parser.parse_args()
-file_index = args.index
-if file_index is not "": file_index = "_" + file_index
-experiment_names = args.experiment_names
-lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
-num_files = args.num_file
+    ax1.plot(temp.mean(dim=['x2', 'x3']), temp['x1'], linestyle)
+    ax2.plot(theta.mean(dim=['x2', 'x3']), theta['x1'], linestyle)
 
-# make plot output directory if it doesn't already exist
-save_directory = f"analysis_output"
-try:
-    os.mkdir(save_directory)
-except FileExistsError:
-    pass
+    if last:        # plot comparison line at very end
+        ax1.plot(-grav / cp * temp['x1'] + 260, temp['x1'], 'k:')
 
-plot_dict = {}
-plot_dict["vert_temp_theta"]    = {"flag": 1, "subplots": [1, 2]}
-plot_dict["hori_theta"]         = {"flag": 1, "subplots": [3, 1]}
-plot_dict["vert_vel_dist"]      = {"flag": 1, "subplots": [5, 1]}
-plot_dict["hori_vel"]           = {"flag": 1, "subplots": [1, 1]}
-plot_dict["gravity_wave"]       = {"flag": 1, "subplots": [1, 1]}
-plot_dict["KE_flux"]            = {"flag": 1, "subplots": [1, 1]}
-plot_dict["KE_power"]           = {"flag": 1, "subplots": [1, 3]}
+    ax1.legend([*legend_labels, "Adiabatic profile"])
+    ax2.legend(legend_labels)
+    ax2.sharey(ax1)
+    ax1.set_ylabel("Height (m)")
 
-skip_main_loop = True
-for key, value in plot_dict.items():
-    if key != "hori_theta" and value["flag"]:
-        skip_main_loop = False
 
-# configure plot size and axes
-print("Preparing plots...")
-for key, value in plot_dict.items():
-    fig = plt.figure()
-    value["fig"] = fig
-    subplot_array_dims = value["subplots"]
-    fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
-    for i in range(1, np.prod(subplot_array_dims) + 1):
-        value[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
+def plot_vert_vel_dist(analysis_dict: Analysis_Config, vel1: xr.Dataset, color: str, style: str, legend_labels: List[str]):
+    titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
+    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 6)]
 
-# configure plot coloring
-linestyles = {"color": [], "style": [], "marker": [], "comb": []}
-for exp in experiment_names:
-    if is_implicit(exp):
-        color = 'r'
-    else:
-        color = 'b'
-    if get_exp_res(exp) == Res.COURSE:
-        style = '--'
-        marker = 'v'
-    elif get_exp_res(exp) == Res.FINE:
-        style = "-"
-        marker = 'o'
-    linestyles["color"].append(color)
-    linestyles["style"].append(style)
-    linestyles["marker"].append(marker)
-    linestyles["comb"].append(f"{style}{color}")
+    bin_width = 0.5
+    # bins = 100
+    # bins = np.arange(-100, 100 + bin_width, bin_width)
+    # sample_pts = np.linspace(-20, 20, 100)
+    nx1 = vel1.x1.size
+    idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
+    data_min = 0
+    data_max = 0
+    for j, ax in enumerate(axes):
+        vel_data = vel1.isel(x1=idxs[j]).stack(x3x2=('x3','x2'))
+        bin_min = np.floor(vel_data.min() / bin_width) * bin_width
+        bin_max = np.floor(vel_data.max() / bin_width) * bin_width
+        bins = np.arange(bin_min, bin_max + bin_width, bin_width)
+        if bin_min < data_min:
+            data_min = bin_min
+        if bin_max > data_max:
+            data_max = bin_max
+        ax.hist(vel1.isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6, linestyle=style, color=color)
+        if j > 0:
+            ax.sharex(axes[0])
+        ax.set_title(titles[j])
+        ax.legend(legend_labels)
+    axes[0].set_xlim([data_min, data_max])
 
-legend_labels = ["Experiment " + exp for exp in experiment_names]
 
-last = len(experiment_names) - 1
-for i, exp in enumerate(experiment_names):
-    if skip_main_loop:
-        continue
-    # outer loop is experiment so only one set of data is loaded at a time
-    print(f"Loading data from experiment {exp} ...")
-    nc2_data, nc3_data = averaged_exp_data(exp, num_files)
-    for key, value in plot_dict.items():
-        # inner loop is which experiments need info to be analyzed
-        if not value["flag"]:
-            continue
-        fig: Figure = value["fig"]
-        match key:
-            case "vert_temp_theta":
-                ax1: Axes = value["ax1"]
-                ax1.set_title("Temp")
-                ax2: Axes = value["ax2"]
-                ax2.set_title("Theta")
+def plot_gravity_wave(analysis_dict: Analysis_Config, rho: xr.Dataset, theta: xr.Dataset, linestyle: str, legend_labels: List[str]):
+    ax1: Axes = analysis_dict["ax1"]
+    ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
 
-                temp_data = nc3_data['temp']
-                ax1.plot(temp_data.mean(dim=['x2', 'x3']), temp_data['x1'], linestyles["comb"][i])
+    rho_mean = rho.mean(dim=['x2', 'x3'])
+    theta_mean = theta.mean(dim=['x2', 'x3'])
+    dtheta_dz = theta_mean.differentiate('x1')
+    # drho_dz = rho_data.differentiate('x1')
+    # N_sq = -g / rho_data * drho_dz
+    N_sq = grav / theta_mean * dtheta_dz
+    val = (q_dot / rho_mean)**(1/3) * N_sq**(-1/2)
 
-                theta_data = nc3_data['theta']
-                ax2.plot(theta_data.mean(dim=['x2', 'x3']), theta_data['x1'], linestyles["comb"][i])
+    ax1.plot(val, rho_mean['x1'], linestyle)
+    ax1.set_xlim([0, 50E3])
 
-                if i == last:
-                    # plot comparison line at very end
-                    ax1.plot(-g / cp * temp_data['x1'] + 260, temp_data['x1'], 'k:')
-                ax1.legend([*legend_labels, "Adiabatic profile"])
-                ax2.legend(legend_labels)
-                ax2.sharey(ax1)
-                ax1.set_ylabel("Height (m)")
-                fig.tight_layout()
+    ax1.legend(legend_labels)
 
-            case "hori_vel":
-                ax1: Axes = value["ax1"]
-                ax1.set_title('Mean Horizontal Vel')
 
-                hor_vel_data = nc2_data['vel2']
-                vels = hor_vel_data.mean(dim=['x2', 'x3'])
-                if vels.isel(x1=0) < 0:     # have all velocity profiles oriented the same way
-                    vels = -vels
-                ax1.plot(vels, hor_vel_data['x1'], linestyles["comb"][i])
+def plot_KE_flux(analysis_dict: Analysis_Config, rho: xr.Dataset, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
+                 linestyle: str, legend_labels: List[str], last: bool):
+    ax1: Axes = analysis_dict["ax1"]
 
-                ax1.legend(legend_labels)
-                fig.tight_layout()
+    # u**2 + v**2 + w**2
+    KE_flux = vel1 * 0.5 * (vel3**2 + vel2**2 + vel1**2) * rho
+    mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
 
-            case "vert_vel_dist":
-                titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
-                axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 6)]
+    ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyle)
+    if last:
+        ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
+        legend_labels.append('Forcing')
 
-                bin_width = 0.5
-                # bins = 100
-                # bins = np.arange(-100, 100 + bin_width, bin_width)
-                # sample_pts = np.linspace(-20, 20, 100)
-                nx1 = nc2_data.x1.size
-                idxs = [-1, int(nx1*3/4), int(nx1/2), int(nx1/4), 0]
-                data_min = 0
-                data_max = 0
-                for j, ax in enumerate(axes):
-                    vel_data = nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2'))
-                    bin_min = np.floor(vel_data.min() / bin_width) * bin_width
-                    bin_max = np.floor(vel_data.max() / bin_width) * bin_width
-                    bins = np.arange(bin_min, bin_max + bin_width, bin_width)
-                    if bin_min < data_min:
-                        data_min = bin_min
-                    if bin_max > data_max:
-                        data_max = bin_max
-                    ax.hist(nc2_data['vel1'].isel(x1=idxs[j]).stack(x3x2=('x3','x2')), bins=bins, histtype='step', density=True, linewidth=2, alpha=0.6, linestyle=linestyles["style"][i], color=linestyles["color"][i])
-                    if i > 0:
-                        ax.sharex(axes[0])
-                    ax.set_title(titles[j])
-                    ax.legend(legend_labels)
-                axes[0].set_xlim([data_min, data_max])
-                fig.tight_layout()
+    ax1.legend(legend_labels)
+    ax1.set_xlabel('Energy Flux (W/m^2)')
+    ax1.set_ylabel('Height (m)')
 
-            case "gravity_wave":
-                ax1: Axes = value["ax1"]
-                ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
 
-                rho_data = nc2_data['rho'].mean(dim=['x2', 'x3'])
-                theta_data = nc3_data['theta'].mean(dim=['x2', 'x3'])
-                dtheta_dz = theta_data.differentiate('x1')
-                # drho_dz = rho_data.differentiate('x1')
-                # N_sq = -g / rho_data * drho_dz
-                N_sq = g / theta_data * dtheta_dz
-                val = (q_dot / rho_data)**(1/3) * N_sq**(-1/2)
+def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
+                  marker: str, color: str, legend_labels: List[str], last: bool, threeD: bool):
+    # num samples
+    nx1 = vel1.x1.size
+    nx2 = vel1.x2.size
+    nx3 = vel1.x3.size
 
-                ax1.plot(val, rho_data['x1'], linestyles["comb"][i])
-                ax1.set_xlim([0, 50E3])
+    titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
+    idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
+    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 4)]
 
-                ax1.legend(legend_labels)
-                fig.tight_layout()
+    # sampling frequency
+    L = 80E3        # size of domain
+    Fs2 = nx2 / L   # sampling frequency in x2 direction
+    Fs3 = nx3 / L   # sampling frequency in x3 direction
 
-            case "KE_flux":
-                ax1: Axes = value["ax1"]
+    for j, ax in enumerate(axes):
+        u = vel3.isel(x1=idxs[j])
+        v = vel2.isel(x1=idxs[j])
+        w = vel1.isel(x1=idxs[j])
+        if threeD:
+            kx2 = np.fft.fftfreq(nx2, d=1/Fs2)
+            kx2 = np.fft.fftshift(kx2)
+            kx3 = np.fft.fftfreq(nx3, d=1/Fs3)
+            kx3 = np.fft.fftshift(kx3)
+            Kx2, Kx3 = np.meshgrid(kx2, kx3)
+            k = np.sqrt(Kx2**2 + Kx3**2)
 
-                rho = nc2_data['rho']
-                u = nc2_data['vel3']
-                v = nc2_data['vel2']
-                w = nc2_data['vel1']
+            KE = u**2 + v**2 + w**2
+            KE_hat = np.fft.fft2(KE)
+            KE_hat = np.fft.fftshift(KE_hat)
+            KE_ps_2D = abs(KE_hat)**2
 
-                KE_flux = w * 0.5 * (u**2 + v**2 + w**2) * rho
-                mean_KE_flux = KE_flux.mean(dim=['x2', 'x3'])
+            # ASSUMES nx2 = nx3!!!
+            freqs = kx2[kx2 >= 0]
+            hist_counts, _ = np.histogram(k.ravel(), bins=freqs)
+            hist_power, _ = np.histogram(k.ravel(), bins=freqs, weights=KE_ps_2D.ravel())
 
-                ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyles["comb"][i])
-                if not is_3D(exp) and i == last:
-                    ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
-                    legend_labels.append('Forcing')
+            KE_ps = np.divide(hist_power, hist_counts, where=hist_counts != 0)
+            freqs = np.convolve(freqs, [0.5, 0.5])[1:-1]
 
-                ax1.legend(legend_labels)
-                ax1.set_xlabel('Energy Flux (W/m^2)')
-                ax1.set_ylabel('Height (m)')
-                fig.tight_layout()
+        else:
+            freqs = np.fft.rfftfreq(nx2, d=1/Fs2)
+            # (nx, 1) arrays do not undergo 1D ffts correctly, need (nx,)
+            v = v.isel(x3=0)
+            w = w.isel(x3=0)
 
-            case "KE_power":
-                # num samples
-                nx1 = nc2_data.x1.size
-                nx2 = nc2_data.x2.size
-                nx3 = nc2_data.x3.size
+            v_hat = np.fft.rfft(v)
+            w_hat = np.fft.rfft(w)
 
-                titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
-                idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
-                axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
+            KE_hat = v_hat**2 + w_hat**2
+            KE_ps = abs(KE_hat)**2
 
-                # sampling frequency
-                L = 80E3        # size of domain
-                Fs2 = nx2 / L   # sampling frequency in x2 direction
-                Fs3 = nx3 / L   # sampling frequency in x3 direction
+            freqs = freqs[1:]
+            KE_ps = KE_ps[1:]
 
-                for j, ax in enumerate(axes):
-                    u = nc2_data['vel3'].isel(x1=idxs[j])
-                    v = nc2_data['vel2'].isel(x1=idxs[j])
-                    w = nc2_data['vel1'].isel(x1=idxs[j])
-                    if is_3D(exp):
-                        kx2 = np.fft.fftfreq(nx2, d=1/Fs2)
-                        kx2 = np.fft.fftshift(kx2)
-                        kx3 = np.fft.fftfreq(nx3, d=1/Fs3)
-                        kx3 = np.fft.fftshift(kx3)
-                        Kx2, Kx3 = np.meshgrid(kx2, kx3)
-                        k = np.sqrt(Kx2**2 + Kx3**2)
+        ax.plot(freqs, KE_ps, marker=marker, color=color, linestyle='None', markerfacecolor='none')
+        if last:
+            pass
+            #ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
+            #ax.plot(freqs, np.pow(freqs, -3) / np.max(np.pow(freqs, -3)), 'c:')
+            #ax.plot(freqs, np.pow(freqs, -5) / np.max(np.pow(freqs, -5)), 'm:')
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_xlim([1E-4, np.max(freqs)])
+        ax.set_title(titles[j])
+        ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
+        ax.legend([*legend_labels, "k^(-5/3)", "k^(-3)", "k^(-5)"])
 
-                        # u_hat = np.fft.fft2(u)
-                        # u_hat = np.fft.fftshift(u_hat)
-                        # v_hat = np.fft.fft2(v)
-                        # v_hat = np.fft.fftshift(v_hat)
-                        # w_hat = np.fft.fft2(w)
-                        # w_hat = np.fft.fftshift(w_hat)
+    axes[-1].set_xlabel('Wavenumber (1/m)')
 
-                        # KE_hat = u_hat**2 + v_hat**2 + w_hat**2
 
-                        KE = u**2 + v**2 + w**2
-                        KE_hat = np.fft.fft2(KE)
-                        KE_hat = np.fft.fftshift(KE_hat)
-                        KE_ps_2D = abs(KE_hat)**2
-
-                        # ASSUMES nx2 = nx3!!!
-                        freqs = kx2[kx2 >= 0]
-                        hist_counts, _ = np.histogram(k.ravel(), bins=freqs)
-                        hist_power, _ = np.histogram(k.ravel(), bins=freqs, weights=KE_ps_2D.ravel())
-
-                        KE_ps = np.divide(hist_power, hist_counts, where=hist_counts != 0)
-                        freqs = np.convolve(freqs, [0.5, 0.5])[1:-1]
-
-                    else:
-                        freqs = np.fft.rfftfreq(nx2, d=1/Fs2)
-                        # (nx, 1) arrays do not undergo 1D ffts correctly, need (nx,)
-                        v = v.isel(x3=0)
-                        w = w.isel(x3=0)
-
-                        v_hat = np.fft.rfft(v)
-                        w_hat = np.fft.rfft(w)
-
-                        KE_hat = v_hat**2 + w_hat**2
-                        KE_ps = abs(KE_hat)**2
-
-                        freqs = freqs[1:]
-                        KE_ps = KE_ps[1:]
-
-                    ax.plot(freqs, KE_ps, marker=linestyles["marker"][i], color=linestyles["color"][i], linestyle='None', markerfacecolor='none')
-                    #if i == last:
-                        #ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
-                        #ax.plot(freqs, np.pow(freqs, -3) / np.max(np.pow(freqs, -3)), 'c:')
-                        #ax.plot(freqs, np.pow(freqs, -5) / np.max(np.pow(freqs, -5)), 'm:')
-                    ax.set_xscale('log')
-                    ax.set_yscale('log')
-                    ax.set_xlim([1E-4, np.max(freqs)])
-                    ax.set_title(titles[j])
-                    ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
-                    ax.legend([*legend_labels, "k^(-5/3)", "k^(-3)", "k^(-5)"])
-
-                axes[-1].set_xlabel('Wavenumber (1/m)')
-                fig.tight_layout()
-
-# handle time series data separately
-if (value := plot_dict["hori_theta"])["flag"]:
-    print("Loading time series...")
+def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: List[str], linestyles: Dict[str, List[str]], legend_labels: List[str]):
     titles = ["Theta Top 1/4", "Theta Middle", "Theta Bottom 1/4"]
-    axes: List[Axes] = [value[f"ax{i}"] for i in range(1, 4)]
-    fig: Figure = value["fig"]
+    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 4)]
 
     for i, exp in enumerate(experiment_names):
         theta_data_exp = [[], [], []]
@@ -334,15 +224,128 @@ if (value := plot_dict["hori_theta"])["flag"]:
         ax.legend(legend_labels)
 
     axes[-1].set_xlabel('Time (min)')
-    fig.tight_layout()
 
-# finally, save all plots
-print("Saving plots...")
-for key, value in plot_dict.items():
-    # inner loop is which experiments need info to be analyzed
-    if not value["flag"]:
-        continue
-    fig: Figure = value["fig"]
-    output_file = f"{key}_ss{file_index}.png"
-    fig.savefig(f"{save_directory}/{output_file}", dpi=300)
-    plt.close(fig)
+
+def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int, filepath_constructor):
+    skip_main_loop = True
+    for key, analysis_dict in plot_dict.items():
+        if key != "hori_theta" and analysis_dict["flag"]:
+            skip_main_loop = False
+
+    # configure plot size and axes
+    print("Preparing plots...")
+    for key, analysis_dict in plot_dict.items():
+        fig = plt.figure()
+        analysis_dict["fig"] = fig
+        subplot_array_dims = analysis_dict["subplots"]
+        fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
+        for i in range(1, np.prod(subplot_array_dims) + 1):
+            analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
+
+    # configure plot coloring
+    linestyles = {"color": [], "style": [], "marker": [], "comb": []}
+    for exp in experiment_names:
+        if is_implicit(exp):
+            color = 'r'
+        else:
+            color = 'b'
+        if get_exp_res(exp) == Res.COURSE:
+            style = '--'
+            marker = 'v'
+        elif get_exp_res(exp) == Res.FINE:
+            style = "-"
+            marker = 'o'
+        linestyles["color"].append(color)
+        linestyles["style"].append(style)
+        linestyles["marker"].append(marker)
+        linestyles["comb"].append(f"{style}{color}")
+
+    # configure legend labels
+    legend_labels = ["Experiment " + exp for exp in experiment_names]
+    for i, exp in enumerate(experiment_names):          # outer loop is experiment so only one set of data is loaded at a time
+        if skip_main_loop:
+            continue
+        last = i == len(experiment_names) - 1
+        print(f"Loading data from experiment {exp} ...")
+        nc_data = averaged_exp_data(filepath_constructor(exp), num_files_to_avg)
+        for key, analysis_dict in plot_dict.items():    # inner loop is which experiments need info to be analyzed
+            if not analysis_dict["flag"]:
+                continue
+            fig: Figure = analysis_dict["fig"]
+            match key:
+                case "vert_temp_theta":
+                    plot_vert_temp_theta(analysis_dict, nc_data['temp'], nc_data['theta'], linestyles["comb"][i], legend_labels, last)
+                    fig.tight_layout()
+
+                case "vert_vel_dist":
+                    plot_vert_vel_dist(analysis_dict, nc_data['vel1'], linestyles["color"][i], legend_labels)
+                    fig.tight_layout()
+
+                case "gravity_wave":
+                    plot_gravity_wave(analysis_dict, nc_data['rho'], nc_data['theta'], linestyles["comb"][i], legend_labels)
+                    fig.tight_layout()
+
+                case "KE_flux":
+                    plot_KE_flux(analysis_dict, nc_data['rho'], nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["comb"][i], legend_labels, (not is_3D(exp) and last))
+                    fig.tight_layout()
+
+                case "KE_power":
+                    plot_KE_power(analysis_dict, nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["marker"][i], linestyles["color"][i], legend_labels, last, is_3D(exp))
+                    fig.tight_layout()
+    
+    if (analysis_dict := plot_dict["hori_theta"])["flag"]:
+        print("Loading time series...")
+        fig: Figure = analysis_dict["fig"]
+        plot_theta_time_series(analysis_dict, experiment_names, linestyles, legend_labels)
+        fig.tight_layout()
+
+
+def save_plots(plot_dict: Dict[str: Analysis_Config], save_dir: str, file_index: str):
+    # finally, save all plots
+    print("Saving plots...")
+    for key, value in plot_dict.items():
+        # inner loop is which experiments need info to be analyzed
+        if not value["flag"]:
+            continue
+        fig: Figure = value["fig"]
+        output_file = f"{key}_ss{file_index}.png"
+        fig.savefig(f"{save_dir}/{output_file}", dpi=300)
+        plt.close(fig)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--experiment-names", required=True, type=str, nargs='+', help="Name of the experiments to analyze as a list")
+    parser.add_argument("-l", "--lat-long-bounds", type=float, nargs=4, help="List of min lat, max lat, min long, max long")
+    parser.add_argument("-n", "--num-file", type=int, default=1, help="Number of files to average over from the end")
+    parser.add_argument("-i", "--index", type=str, default="", help="Index for file naming (in case of duplicate names)")
+    parser.add_argument("-o", "--output-parent-dir", type=str, default = ".", help="Directory for output files.")
+    args = parser.parse_args()
+    file_index: str = args.index
+    if file_index is not "": file_index = "_" + file_index
+    experiment_names: List[str] = args.experiment_names
+    lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
+    num_files: int = args.num_file
+    filepath_constructor = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}_{lat_long_str}"
+
+    # make plot output directory if it doesn't already exist
+    save_directory = f"analysis_output"
+    try:
+        os.mkdir(save_directory)
+    except FileExistsError:
+        pass
+
+    plot_dict: Dict[str, Analysis_Config] = {}
+    plot_dict["vert_temp_theta"]    = {"flag": 1, "subplots": [1, 2]}
+    plot_dict["hori_theta"]         = {"flag": 1, "subplots": [3, 1]}
+    plot_dict["vert_vel_dist"]      = {"flag": 1, "subplots": [5, 1]}
+    plot_dict["gravity_wave"]       = {"flag": 1, "subplots": [1, 1]}
+    plot_dict["KE_flux"]            = {"flag": 1, "subplots": [1, 1]}
+    plot_dict["KE_power"]           = {"flag": 1, "subplots": [1, 3]}
+
+    make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
+    save_plots(plot_dict, save_directory, file_index)
+
+
+if __name__ == "__main__":
+    main()
