@@ -161,7 +161,8 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
             hist_counts, _ = np.histogram(k.ravel(), bins=freqs)
             hist_power, _ = np.histogram(k.ravel(), bins=freqs, weights=KE_ps_2D.ravel())
 
-            KE_ps = np.divide(hist_power, hist_counts, where=hist_counts != 0)
+            KE_ps = np.where(hist_counts != 0, hist_power / hist_counts, 0)
+            # KE_ps = np.divide(hist_power, hist_counts, where=hist_counts != 0)
             freqs = np.convolve(freqs, [0.5, 0.5])[1:-1]
 
         else:
