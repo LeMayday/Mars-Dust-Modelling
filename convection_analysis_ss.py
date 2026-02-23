@@ -203,16 +203,11 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
         ax.plot(freqs, KE_ps, marker=marker, color=color, linestyle='None', markerfacecolor='none')
         ax.set_xscale('log')
         ax.set_yscale('log')
-        # ax.set_xlim([1E-4, np.max(freqs)])
+        ax.set_xlim([1E-4, np.max(freqs)])
         if last:
-            tc_xmin = 0.85; tc_xmax = 0.94; tc_ymax = 0.85
-            triangle_coords = lambda slope: np.array([[tc_xmin, tc_ymax], [tc_xmax, tc_ymax], [tc_xmax, tc_ymax + (tc_xmax - tc_xmin) * slope]])
             slopes = ["-5/3", "-3"]
             for s in slopes:
-                add_slope_triangle_loglog(ax, tc_xmin, tc_ymax, s, 0.15)
-                # use of eval here is fine since slopes is defined in this scope
-                # ax.add_patch(Polygon(triangle_coords(eval(s)), transform=ax.transAxes, edgecolor='k', facecolor='none'))
-                # ax.text(triangle_coords(eval(s))[-1, 0] + 0.01, triangle_coords(eval(s))[-1, 1], s, transform=ax.transAxes, ha='left', va='center')
+                add_slope_triangle_loglog(ax, 0.85, 0.85, s, 0.15)
         ax.set_title(titles[j])
         ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
         ax.legend(legend_labels)
