@@ -196,15 +196,15 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
     axes[-1].set_xlabel('Wavenumber (1/m)')
 
 
-def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: List[str], linestyles: Dict[str, List[str]], legend_labels: List[str]):
+def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: List[str], filepath_constructor, linestyles: Dict[str, List[str]], legend_labels: List[str]):
     titles = ["Theta Top 1/4", "Theta Middle", "Theta Bottom 1/4"]
     axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 4)]
 
     for i, exp in enumerate(experiment_names):
         theta_data_exp = [[], [], []]
-        _, nc3_files = get_nc_files(f"output_{exp}")
-        time = np.zeros(len(nc3_files))
-        for j, nc3 in enumerate(nc3_files):
+        nc_files = get_nc_files(filepath_constructor(exp))
+        time = np.zeros(len(nc_files))
+        for j, nc3 in enumerate(nc_files):
             with xr.open_dataset(nc3).isel(time=0) as data3:
                 time[j] = float(data3.time) / 60
                 theta_data = data3['theta']
@@ -279,7 +279,7 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
                     fig.tight_layout()
 
                 case "vert_vel_dist":
-                    plot_vert_vel_dist(analysis_dict, nc_data['vel1'], linestyles["color"][i], legend_labels)
+                    plot_vert_vel_dist(analysis_dict, nc_data['vel1'], linestyles["color"][i], linestyles["style"][i], legend_labels)
                     fig.tight_layout()
 
                 case "gravity_wave":
@@ -297,11 +297,11 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
     if (analysis_dict := plot_dict["hori_theta"])["flag"]:
         print("Loading time series...")
         fig: Figure = analysis_dict["fig"]
-        plot_theta_time_series(analysis_dict, experiment_names, linestyles, legend_labels)
+        plot_theta_time_series(analysis_dict, experiment_names, filepath_constructor, linestyles, legend_labels)
         fig.tight_layout()
 
 
-def save_plots(plot_dict: Dict[str: Analysis_Config], save_dir: str, file_index: str):
+def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index: str):
     # finally, save all plots
     print("Saving plots...")
     for key, value in plot_dict.items():
@@ -323,14 +323,14 @@ def main():
     parser.add_argument("-o", "--output-parent-dir", type=str, default = ".", help="Directory for output files.")
     args = parser.parse_args()
     file_index: str = args.index
-    if file_index is not "": file_index = "_" + file_index
+    if file_index != "": file_index = "_" + file_index
     experiment_names: List[str] = args.experiment_names
     lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
     num_files: int = args.num_file
     filepath_constructor = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}_{lat_long_str}"
 
     # make plot output directory if it doesn't already exist
-    save_directory = f"analysis_output"
+    save_directory = f"output/analysis_output"
     try:
         os.mkdir(save_directory)
     except FileExistsError:
