@@ -3,6 +3,7 @@
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import os
@@ -18,6 +19,25 @@ cp = gamma * R_gas / M_bar / (gamma - 1)
 class Analysis_Config(TypedDict):
     flag: bool
     subplots: List[int]
+
+
+def add_slope_triangle_loglog(ax: Axes, x_start_frac: float, y_start_frac: float, slope_str: str, width_frac: float = 0.1):
+    # thanks Gemini
+    assert slope_str in ["-5/3", "-3"]      # make sure not evaluating other expression
+    slope = eval(slope_str)
+    trans = ax.transAxes + ax.transData.inverted()
+
+    p1_data = trans.transform((x_start_frac, y_start_frac))     # define points in axis coordinated
+    p2_axes = (x_start_frac + width_frac, y_start_frac)
+    p2_data = trans.transform(p2_axes)
+
+    dx_ratio = p2_data[0] / p1_data[0]                          # but compute slope based on actual data
+    dy_ratio = dx_ratio**slope
+    p3_data = (p2_data[0], p1_data[1] * dy_ratio)
+
+    pts = np.array([p1_data, p2_data, p3_data])
+    ax.add_patch(Polygon(pts, facecolor='none', edgecolor='k', transform=ax.transData))
+    ax.text(p3_data[0], p3_data[1], slope_str, transform=ax.transData, va='center')
 
 
 def get_nc_files(directory: str) -> List[str]:
@@ -181,17 +201,21 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
             KE_ps = KE_ps[1:]
 
         ax.plot(freqs, KE_ps, marker=marker, color=color, linestyle='None', markerfacecolor='none')
-        if last:
-            pass
-            #ax.plot(freqs, np.pow(freqs, -5/3) / np.max(np.pow(freqs, -5/3)), 'k:')
-            #ax.plot(freqs, np.pow(freqs, -3) / np.max(np.pow(freqs, -3)), 'c:')
-            #ax.plot(freqs, np.pow(freqs, -5) / np.max(np.pow(freqs, -5)), 'm:')
         ax.set_xscale('log')
         ax.set_yscale('log')
-        ax.set_xlim([1E-4, np.max(freqs)])
+        # ax.set_xlim([1E-4, np.max(freqs)])
+        if last:
+            tc_xmin = 0.85; tc_xmax = 0.94; tc_ymax = 0.85
+            triangle_coords = lambda slope: np.array([[tc_xmin, tc_ymax], [tc_xmax, tc_ymax], [tc_xmax, tc_ymax + (tc_xmax - tc_xmin) * slope]])
+            slopes = ["-5/3", "-3"]
+            for s in slopes:
+                add_slope_triangle_loglog(ax, tc_xmin, tc_ymax, s, 0.15)
+                # use of eval here is fine since slopes is defined in this scope
+                # ax.add_patch(Polygon(triangle_coords(eval(s)), transform=ax.transAxes, edgecolor='k', facecolor='none'))
+                # ax.text(triangle_coords(eval(s))[-1, 0] + 0.01, triangle_coords(eval(s))[-1, 1], s, transform=ax.transAxes, ha='left', va='center')
         ax.set_title(titles[j])
         ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
-        ax.legend([*legend_labels, "k^(-5/3)", "k^(-3)", "k^(-5)"])
+        ax.legend(legend_labels)
 
     axes[-1].set_xlabel('Wavenumber (1/m)')
 
