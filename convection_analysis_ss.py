@@ -19,15 +19,25 @@ cp = gamma * R_gas / M_bar / (gamma - 1)
 class Analysis_Config(TypedDict):
     flag: bool
     subplots: List[int]
+    all_experiments: bool
 
 
 def axes_list(analysis_dict: Analysis_Config) -> List[Axes]:
     return [analysis_dict[f"ax{i}"] for i in range(1, np.prod(analysis_dict["subplots"]) + 1)]
 
 
-def add_legend_labels(axes: List[Axes], legend_labels: List[str]):
-    for ax in axes:
-        ax.legend(legend_labels)
+def add_legend_labels(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str]):
+    for key, analysis_dict in plot_dict.items():
+        if analysis_dict["flag"] and analysis_dict["all_experiments"]:
+            legend_labels = ["Experiment " + exp for exp in experiment_names]
+            axes = axes_list(analysis_dict)
+            if key == "vert_temp_theta":
+                legend_labels.append("Adiabatic profile")
+            elif key == "KE_flux":
+                legend_labels.append("Forcing")
+
+            for ax in axes:
+                ax.legend(legend_labels)
 
 
 def add_slope_triangle_loglog(ax: Axes, x_start_frac: float, y_start_frac: float, slope_str: str, width_frac: float = 0.1):
@@ -129,7 +139,7 @@ def plot_gravity_wave(axes: List[Axes], rho: xr.Dataset, theta: xr.Dataset, line
 
 
 def plot_KE_flux(axes: List[Axes], rho: xr.Dataset, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
-                 linestyle: str, legend_labels: List[str], last: bool):
+                 linestyle: str, last: bool):
     ax1 = axes[0]
 
     # u**2 + v**2 + w**2
@@ -139,15 +149,13 @@ def plot_KE_flux(axes: List[Axes], rho: xr.Dataset, vel1: xr.Dataset, vel2: xr.D
     ax1.plot(mean_KE_flux, mean_KE_flux['x1'], linestyle)
     if last:
         ax1.plot(q_dot + 0 * mean_KE_flux['x1'], mean_KE_flux['x1'], 'k:')
-        legend_labels.append('Forcing')
 
-    ax1.legend(legend_labels)
     ax1.set_xlabel('Energy Flux (W/m^2)')
     ax1.set_ylabel('Height (m)')
 
 
 def plot_KE_power(axes: List[Axes], vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
-                  marker: str, color: str, legend_labels: List[str], threeD: bool, last: bool):
+                  marker: str, color: str, threeD: bool, last: bool):
     # num samples
     nx1 = vel1.x1.size
     nx2 = vel1.x2.size
@@ -212,7 +220,6 @@ def plot_KE_power(axes: List[Axes], vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr
                 add_slope_triangle_loglog(ax, 0.85, 0.85, s, 0.15)
         ax.set_title(titles[j])
         ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
-        ax.legend(legend_labels)
 
     axes[-1].set_xlabel('Wavenumber (1/m)')
 
@@ -308,25 +315,18 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
 
                 case "KE_power":
                     plot_KE_power(axes, nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["marker"][i], linestyles["color"][i], is_3D(exp), last)
-    
+
+            fig.tight_layout()
+
     if (analysis_dict := plot_dict["hori_theta"])["flag"]:
         print("Loading time series...")
         axes = axes_list(analysis_dict)
         plot_theta_time_series(axes, experiment_names, filepath_constructor, linestyles)
+        nc_data = averaged_exp_data(filepath_constructor(exp), num_files_to_avg)
 
-    # configure legend labels
-    legend_labels = ["Experiment " + exp for exp in experiment_names]
-    # final touches (legend and reference lines)
-    for key, analysis_dict in plot_dict.items():
-        if not analysis_dict["flag"]:
-            continue
-        fig: Figure = analysis_dict["fig"]
-        axes = axes_list(analysis_dict)
-        if key == "vert_temp_theta":
-            add_legend_labels(axes, [*legend_labels, "Adiabatic profile"])
+    add_legend_labels(plot_dict, experiment_names)
 
-        add_legend_labels(axes, legend_labels)
-        fig.tight_layout()
+
 
 
 def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index: str):
@@ -365,12 +365,13 @@ def main():
         pass
 
     plot_dict: Dict[str, Analysis_Config] = {}
-    plot_dict["vert_temp_theta"]    = {"flag": 1, "subplots": [1, 2]}
-    plot_dict["hori_theta"]         = {"flag": 1, "subplots": [3, 1]}
-    plot_dict["vert_vel_dist"]      = {"flag": 1, "subplots": [5, 1]}
-    plot_dict["gravity_wave"]       = {"flag": 1, "subplots": [1, 1]}
-    plot_dict["KE_flux"]            = {"flag": 1, "subplots": [1, 1]}
-    plot_dict["KE_power"]           = {"flag": 1, "subplots": [1, 3]}
+    plot_dict["vert_temp_theta"]    = {"flag": 0, "subplots": [1, 2], "all_experiments": 1}
+    plot_dict["hori_theta"]         = {"flag": 0, "subplots": [3, 1], "all_experiments": 1}
+    plot_dict["vert_vel_dist"]      = {"flag": 0, "subplots": [5, 1], "all_experiments": 1}
+    plot_dict["gravity_wave"]       = {"flag": 0, "subplots": [1, 1], "all_experiments": 1}
+    plot_dict["KE_flux"]            = {"flag": 0, "subplots": [1, 1], "all_experiments": 1}
+    plot_dict["KE_power"]           = {"flag": 0, "subplots": [1, 3], "all_experiments": 1}
+    plot_dict["slope_winds"]        = {"flag": 1, "subplots": [1, 2], "all_experiments": 0}
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
     save_plots(plot_dict, save_directory, file_index)
