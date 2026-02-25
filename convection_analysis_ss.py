@@ -21,6 +21,15 @@ class Analysis_Config(TypedDict):
     subplots: List[int]
 
 
+def axes_list(analysis_dict: Analysis_Config) -> List[Axes]:
+    return [analysis_dict[f"ax{i}"] for i in range(1, np.prod(analysis_dict["subplots"]) + 1)]
+
+
+def add_legend_labels(axes: List[Axes], legend_labels: List[str]):
+    for ax in axes:
+        ax.legend(legend_labels)
+
+
 def add_slope_triangle_loglog(ax: Axes, x_start_frac: float, y_start_frac: float, slope_str: str, width_frac: float = 0.1):
     # thanks Gemini
     assert slope_str in ["-5/3", "-3"]      # make sure not evaluating other expression
@@ -60,10 +69,10 @@ def averaged_exp_data(file_path: str, num_files: int) -> xr.Dataset:
     return nc_data_concat.mean('time')
 
 
-def plot_vert_temp_theta(analysis_dict: Analysis_Config, temp: xr.Dataset, theta: xr. Dataset, linestyle: str, legend_labels: List[str], last: bool):
-    ax1: Axes = analysis_dict["ax1"]
+def plot_vert_temp_theta(axes: List[Axes], temp: xr.Dataset, theta: xr. Dataset, linestyle: str, last: bool):
+    ax1 = axes[0]
     ax1.set_title("Temp")
-    ax2: Axes = analysis_dict["ax2"]
+    ax2 = axes[1]
     ax2.set_title("Theta")
 
     ax1.plot(temp.mean(dim=['x2', 'x3']), temp['x1'], linestyle)
@@ -72,15 +81,12 @@ def plot_vert_temp_theta(analysis_dict: Analysis_Config, temp: xr.Dataset, theta
     if last:        # plot comparison line at very end
         ax1.plot(-grav / cp * temp['x1'] + 260, temp['x1'], 'k:')
 
-    ax1.legend([*legend_labels, "Adiabatic profile"])
-    ax2.legend(legend_labels)
     ax2.sharey(ax1)
     ax1.set_ylabel("Height (m)")
 
 
-def plot_vert_vel_dist(analysis_dict: Analysis_Config, vel1: xr.Dataset, color: str, style: str, legend_labels: List[str]):
+def plot_vert_vel_dist(axes: List[Axes], vel1: xr.Dataset, color: str, style: str):
     titles = ["Vz Top", "Vz Top 1/4", "Vz Middle", "Vz Bottom 1/4", "Vz Bottom"]
-    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 6)]
 
     bin_width = 0.5
     # bins = 100
@@ -103,12 +109,11 @@ def plot_vert_vel_dist(analysis_dict: Analysis_Config, vel1: xr.Dataset, color: 
         if j > 0:
             ax.sharex(axes[0])
         ax.set_title(titles[j])
-        ax.legend(legend_labels)
     axes[0].set_xlim([data_min, data_max])
 
 
-def plot_gravity_wave(analysis_dict: Analysis_Config, rho: xr.Dataset, theta: xr.Dataset, linestyle: str, legend_labels: List[str]):
-    ax1: Axes = analysis_dict["ax1"]
+def plot_gravity_wave(axes: List[Axes], rho: xr.Dataset, theta: xr.Dataset, linestyle: str):
+    ax1 = axes[0]
     ax1.set_title(r'$(\dot{q}/\rho)^{1/3} N^{-1}$')
 
     rho_mean = rho.mean(dim=['x2', 'x3'])
@@ -122,12 +127,10 @@ def plot_gravity_wave(analysis_dict: Analysis_Config, rho: xr.Dataset, theta: xr
     ax1.plot(val, rho_mean['x1'], linestyle)
     ax1.set_xlim([0, 50E3])
 
-    ax1.legend(legend_labels)
 
-
-def plot_KE_flux(analysis_dict: Analysis_Config, rho: xr.Dataset, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
+def plot_KE_flux(axes: List[Axes], rho: xr.Dataset, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
                  linestyle: str, legend_labels: List[str], last: bool):
-    ax1: Axes = analysis_dict["ax1"]
+    ax1 = axes[0]
 
     # u**2 + v**2 + w**2
     KE_flux = vel1 * 0.5 * (vel3**2 + vel2**2 + vel1**2) * rho
@@ -143,8 +146,8 @@ def plot_KE_flux(analysis_dict: Analysis_Config, rho: xr.Dataset, vel1: xr.Datas
     ax1.set_ylabel('Height (m)')
 
 
-def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
-                  marker: str, color: str, legend_labels: List[str], last: bool, threeD: bool):
+def plot_KE_power(axes: List[Axes], vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr.Dataset,
+                  marker: str, color: str, legend_labels: List[str], threeD: bool, last: bool):
     # num samples
     nx1 = vel1.x1.size
     nx2 = vel1.x2.size
@@ -152,7 +155,6 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
 
     titles = ["KE Power Top 1/4", "KE Power Middle", "KE Power Bottom 1/4"]
     idxs = [int(nx1*3/4), int(nx1/2), int(nx1/4)]
-    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 4)]
 
     # sampling frequency
     L = 80E3        # size of domain
@@ -215,9 +217,8 @@ def plot_KE_power(analysis_dict: Analysis_Config, vel1: xr.Dataset, vel2: xr.Dat
     axes[-1].set_xlabel('Wavenumber (1/m)')
 
 
-def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: List[str], filepath_constructor, linestyles: Dict[str, List[str]], legend_labels: List[str]):
+def plot_theta_time_series(axes: List[Axes], experiment_names: List[str], filepath_constructor, linestyles: Dict[str, List[str]]):
     titles = ["Theta Top 1/4", "Theta Middle", "Theta Bottom 1/4"]
-    axes: List[Axes] = [analysis_dict[f"ax{i}"] for i in range(1, 4)]
 
     for i, exp in enumerate(experiment_names):
         theta_data_exp = [[], [], []]
@@ -241,14 +242,13 @@ def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: Lis
     for i, ax in enumerate(axes):
         ax.set_title(titles[i])
         ax.set_ylabel('Theta (K)')
-        ax.legend(legend_labels)
 
     axes[-1].set_xlabel('Time (min)')
 
 
 def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
                filepath_constructor: Callable[[str], str]):
- 
+
     skip_main_loop = True
     for key, analysis_dict in plot_dict.items():
         if key != "hori_theta" and analysis_dict["flag"]:
@@ -282,8 +282,6 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
         linestyles["marker"].append(marker)
         linestyles["comb"].append(f"{style}{color}")
 
-    # configure legend labels
-    legend_labels = ["Experiment " + exp for exp in experiment_names]
     for i, exp in enumerate(experiment_names):          # outer loop is experiment so only one set of data is loaded at a time
         if skip_main_loop:
             continue
@@ -294,31 +292,40 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
             if not analysis_dict["flag"]:
                 continue
             fig: Figure = analysis_dict["fig"]
+            axes = axes_list(analysis_dict)
             match key:
                 case "vert_temp_theta":
-                    plot_vert_temp_theta(analysis_dict, nc_data['temp'], nc_data['theta'], linestyles["comb"][i], legend_labels, last)
-                    fig.tight_layout()
+                    plot_vert_temp_theta(axes, nc_data['temp'], nc_data['theta'], linestyles["comb"][i], last)
 
                 case "vert_vel_dist":
-                    plot_vert_vel_dist(analysis_dict, nc_data['vel1'], linestyles["color"][i], linestyles["style"][i], legend_labels)
-                    fig.tight_layout()
+                    plot_vert_vel_dist(axes, nc_data['vel1'], linestyles["color"][i], linestyles["style"][i])
 
                 case "gravity_wave":
-                    plot_gravity_wave(analysis_dict, nc_data['rho'], nc_data['theta'], linestyles["comb"][i], legend_labels)
-                    fig.tight_layout()
+                    plot_gravity_wave(axes, nc_data['rho'], nc_data['theta'], linestyles["comb"][i])
 
                 case "KE_flux":
-                    plot_KE_flux(analysis_dict, nc_data['rho'], nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["comb"][i], legend_labels, (not is_3D(exp) and last))
-                    fig.tight_layout()
+                    plot_KE_flux(axes, nc_data['rho'], nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["comb"][i], (not is_3D(exp) and last))
 
                 case "KE_power":
-                    plot_KE_power(analysis_dict, nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["marker"][i], linestyles["color"][i], legend_labels, last, is_3D(exp))
-                    fig.tight_layout()
+                    plot_KE_power(axes, nc_data['vel1'], nc_data['vel2'], nc_data['vel3'], linestyles["marker"][i], linestyles["color"][i], is_3D(exp), last)
     
     if (analysis_dict := plot_dict["hori_theta"])["flag"]:
         print("Loading time series...")
+        axes = axes_list(analysis_dict)
+        plot_theta_time_series(axes, experiment_names, filepath_constructor, linestyles)
+
+    # configure legend labels
+    legend_labels = ["Experiment " + exp for exp in experiment_names]
+    # final touches (legend and reference lines)
+    for key, analysis_dict in plot_dict.items():
+        if not analysis_dict["flag"]:
+            continue
         fig: Figure = analysis_dict["fig"]
-        plot_theta_time_series(analysis_dict, experiment_names, filepath_constructor, linestyles, legend_labels)
+        axes = axes_list(analysis_dict)
+        if key == "vert_temp_theta":
+            add_legend_labels(axes, [*legend_labels, "Adiabatic profile"])
+
+        add_legend_labels(axes, legend_labels)
         fig.tight_layout()
 
 
