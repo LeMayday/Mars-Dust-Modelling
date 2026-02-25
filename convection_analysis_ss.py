@@ -253,23 +253,40 @@ def plot_theta_time_series(axes: List[Axes], experiment_names: List[str], filepa
     axes[-1].set_xlabel('Time (min)')
 
 
+def plot_slope_winds(fig: Figure, axes: List[Axes], velx: NDArray, vely: NDArray, velz: NDArray):
+    '''
+    Requires that velx, vely, and velz are collapsed datasets
+    '''
+    ax1 = axes[0]
+    ax1.set_title("Horizontal Wind")
+    ax2 = axes[1]
+    ax2.set_title("Vertical Wind")
+
+    skip = 10
+    velx = velx
+    vely = vely
+    magnitude = np.sqrt(velx**2 + vely**2)
+    # add a tiny epsilon to avoid division by zero
+    u_norm = velx / (magnitude + 1e-10) * skip
+    v_norm = vely / (magnitude + 1e-10) * skip
+
+    y_idx, x_idx = np.indices(u_norm.shape)
+    q = ax1.quiver(x_idx[::skip, ::skip], y_idx[::skip, ::skip], u_norm[::skip, ::skip], v_norm[::skip, ::skip],
+                   magnitude[::skip, ::skip], cmap='cividis', pivot='middle')
+    ax1.set_aspect('equal')
+    fig.colorbar(q, ax=ax1, label='Wind Speed (m/s)', location='bottom')
+
+    im = ax2.imshow(velz, cmap='cividis')
+    fig.colorbar(im, ax=ax2, label='Wind Velocity (m/s)', location='bottom')
+    ax2.invert_yaxis()
+
+
 def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
                filepath_constructor: Callable[[str], str]):
-
     skip_main_loop = True
     for key, analysis_dict in plot_dict.items():
-        if key != "hori_theta" and analysis_dict["flag"]:
+        if key != "hori_theta" and analysis_dict["flag"] and analysis_dict["all_experiments"]:
             skip_main_loop = False
-
-    # configure plot size and axes
-    print("Preparing plots...")
-    for key, analysis_dict in plot_dict.items():
-        fig = plt.figure()
-        analysis_dict["fig"] = fig
-        subplot_array_dims = analysis_dict["subplots"]
-        fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
-        for i in range(1, np.prod(subplot_array_dims) + 1):
-            analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
     # configure plot coloring
     linestyles = {"color": [], "style": [], "marker": [], "comb": []}
@@ -334,12 +351,11 @@ def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index:
     print("Saving plots...")
     for key, value in plot_dict.items():
         # inner loop is which experiments need info to be analyzed
-        if not value["flag"]:
-            continue
-        fig: Figure = value["fig"]
-        output_file = f"{key}_ss{file_index}.png"
-        fig.savefig(f"{save_dir}/{output_file}", dpi=300)
-        plt.close(fig)
+        if value["flag"] and value["all_experiments"]:
+            fig: Figure = value["fig"]
+            output_file = f"{key}_ss{file_index}.png"
+            fig.savefig(f"{save_dir}/{output_file}", dpi=300)
+            plt.close(fig)
 
 
 def main():
@@ -372,6 +388,15 @@ def main():
     plot_dict["KE_flux"]            = {"flag": 0, "subplots": [1, 1], "all_experiments": 1}
     plot_dict["KE_power"]           = {"flag": 0, "subplots": [1, 3], "all_experiments": 1}
     plot_dict["slope_winds"]        = {"flag": 1, "subplots": [1, 2], "all_experiments": 0}
+
+    # configure plot size and axes
+    for key, analysis_dict in plot_dict.items():
+        fig = plt.figure()
+        analysis_dict["fig"] = fig
+        subplot_array_dims = analysis_dict["subplots"]
+        fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
+        for i in range(1, np.prod(subplot_array_dims) + 1):
+            analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
     save_plots(plot_dict, save_directory, file_index)
