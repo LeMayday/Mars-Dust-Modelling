@@ -29,6 +29,15 @@ def axes_list(analysis_dict: Analysis_Config) -> List[Axes]:
     return [analysis_dict[f"ax{i}"] for i in range(1, np.prod(analysis_dict["subplots"]) + 1)]
 
 
+def configure_fig_and_axes(analysis_dict: Analysis_Config):
+    fig = plt.figure()
+    analysis_dict["fig"] = fig
+    subplot_array_dims = analysis_dict["subplots"]
+    fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
+    for i in range(1, np.prod(subplot_array_dims) + 1):
+        analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
+
+
 def add_legend_labels(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str]):
     print("Adding legends...")
     for key, analysis_dict in plot_dict.items():
@@ -350,7 +359,6 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
 
 def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
                   filepath_constructor: Callable[[str], str], lat_long_bounds: List[str], save_dir: str, file_index: int):
-    print("Plotting surface values...")
     for i, exp in enumerate(experiment_names):          # outer loop is experiment so only one set of data is loaded at a time
         print("Retrieving Topography Data")
         _, nx2, nx3 = get_num_cells_exp(exp)
@@ -442,12 +450,7 @@ def main():
 
     # configure plot size and axes
     for key, analysis_dict in plot_dict.items():
-        fig = plt.figure()
-        analysis_dict["fig"] = fig
-        subplot_array_dims = analysis_dict["subplots"]
-        fig.set_size_inches(max(12, 6*subplot_array_dims[1]), max(8, 4*subplot_array_dims[0]))
-        for i in range(1, np.prod(subplot_array_dims) + 1):
-            analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
+        configure_fig_and_axes(analysis_dict)
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
     make_BL_plots(plot_dict, experiment_names, num_files, filepath_constructor, args.lat_long_bounds, save_directory, file_index)
