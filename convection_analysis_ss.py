@@ -220,7 +220,7 @@ def plot_KE_power(axes: List[Axes], vel1: xr.Dataset, vel2: xr.Dataset, vel3: xr
         if last:
             slopes = ["-5/3", "-3"]
             for s in slopes:
-                add_slope_triangle_loglog(ax, 0.85, 0.85, s, 0.15)
+                add_slope_triangle_loglog(ax, 0.75, 0.85, s, 0.15)
         ax.set_title(titles[j])
         ax.set_ylabel('Wave Power (Log Magnitude), Normalized')
 
