@@ -2,6 +2,8 @@
 
 import xarray as xr
 import numpy as np
+import torch
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.figure import Figure
@@ -9,9 +11,10 @@ from matplotlib.axes import Axes
 import os
 import argparse
 from typing import List, Dict, TypedDict, Callable
-from configure_yaml import is_implicit, is_3D, get_exp_res, Res
-from mars_topography import format_lat_long_string
+from configure_yaml import is_implicit, is_3D, get_exp_res, Res, get_num_cells_exp
+from mars_topography import format_lat_long_string, get_cell_topography
 from mars import grav, gamma, M_bar, R_gas, q_dot 
+from convection import assign_solid_tensor, heat_flux_mask, shift_terrain_data
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
 cp = gamma * R_gas / M_bar / (gamma - 1)
 
@@ -344,6 +347,54 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
     add_legend_labels(plot_dict, experiment_names)
 
 
+def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
+                  filepath_constructor: Callable[[str], str], lat_long_bounds: List[str], save_dir: str, file_index: int):
+    print("Plotting surface values...")
+    for i, exp in enumerate(experiment_names):          # outer loop is experiment so only one set of data is loaded at a time
+        print("Retrieving Topography Data")
+        _, nx2, nx3 = get_num_cells_exp(exp)
+        mars_data, _, _ = get_cell_topography(*lat_long_bounds, nx2, nx3)
+        mars_data, _ = shift_terrain_data(torch.from_numpy(mars_data))
+        print(f"Loading data from experiment {exp} ...")
+        nc_data = averaged_exp_data(filepath_constructor(exp), num_files_to_avg)
+
+        _, _, x1f = np.meshgrid(nc_data['x3f'].values[:-1], nc_data['x2f'].values[:-1], nc_data['x1f'].values[:-1], indexing="ij")
+        x1f = torch.from_numpy(x1f)
+        solid_tensor = assign_solid_tensor(mars_data, x1f)
+        mask_torch = heat_flux_mask(solid_tensor.char()) == 1
+        # this is stored as (x3, x2, x1), but nc_data is stored as (x1, x3, x2)
+        mask_torch = mask_torch.permute(2, 0, 1)
+
+        # nc_data also stores x1f, x2f, x3f as dims, but those aren't in any of the variables
+        true_dims = nc_data["rho"].dims
+        boundary_mask = xr.DataArray(mask_torch.numpy(), coords={k: nc_data.coords[k] for k in true_dims}, dims=true_dims)
+        # keeps values where mask is True, others become NaN
+        boundary_data_3d = nc_data.where(boundary_mask)
+        # Since only 1 value exists per (x,y) column, 'max' or 'sum' extracts that single value
+        boundary_data = boundary_data_3d.sum(dim='x1', skipna=True)
+        # images are oriented with lat along y and long along x
+        # by default, data is (x3, x2), which is long along y and lat long x
+        velx = boundary_data['vel3'].transpose('x2', 'x3')
+        vely = boundary_data['vel2'].transpose('x2', 'x3')
+        velz = boundary_data['vel1'].transpose('x2', 'x3')
+
+        for key, analysis_dict in plot_dict.items():    # inner loop is which experiments need info to be analyzed
+            if not analysis_dict["flag"]:
+                continue
+            fig: Figure = analysis_dict["fig"]
+            axes = axes_list(analysis_dict)
+            match key:
+                case "slope_winds":
+                    plot_slope_winds(fig, axes, velx.values, vely.values, velz.values)
+
+            for ax in axes:
+                ax.set_ylabel("Latitude [m] -> N")
+                ax.set_xlabel("Longitude [m] -> E")
+                ax.contour(mars_data, 10, cmap='gray')
+
+            fig.tight_layout()
+            output_file = f"slope_winds_ss_{exp}{file_index}.png"
+            fig.savefig(f"{save_dir}/{output_file}", dpi=300)
 
 
 def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index: str):
@@ -399,6 +450,7 @@ def main():
             analysis_dict[f"ax{i}"] = fig.add_subplot(subplot_array_dims[0], subplot_array_dims[1], i)
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
+    make_BL_plots(plot_dict, experiment_names, num_files, filepath_constructor, args.lat_long_bounds, save_directory, file_index)
     save_plots(plot_dict, save_directory, file_index)
 
 
