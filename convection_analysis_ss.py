@@ -30,6 +30,7 @@ def axes_list(analysis_dict: Analysis_Config) -> List[Axes]:
 
 
 def add_legend_labels(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str]):
+    print("Adding legends...")
     for key, analysis_dict in plot_dict.items():
         if analysis_dict["flag"] and analysis_dict["all_experiments"]:
             legend_labels = ["Experiment " + exp for exp in experiment_names]
@@ -386,11 +387,10 @@ def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[
             match key:
                 case "slope_winds":
                     plot_slope_winds(fig, axes, velx.values, vely.values, velz.values)
-
-            for ax in axes:
-                ax.set_ylabel("Latitude [m] -> N")
-                ax.set_xlabel("Longitude [m] -> E")
-                ax.contour(mars_data, 10, cmap='gray')
+                    for ax in axes:
+                        ax.set_ylabel("Latitude [m] -> N")
+                        ax.set_xlabel("Longitude [m] -> E")
+                        ax.contour(mars_data, 10, cmap='gray')
 
             fig.tight_layout()
             output_file = f"slope_winds_ss_{exp}{file_index}.png"
