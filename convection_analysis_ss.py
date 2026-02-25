@@ -388,8 +388,9 @@ def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[
         velz = boundary_data['vel1'].transpose('x2', 'x3')
 
         for key, analysis_dict in plot_dict.items():    # inner loop is which experiments need info to be analyzed
-            if not analysis_dict["flag"]:
+            if not analysis_dict["flag"] or analysis_dict["all_experiments"]:
                 continue
+            configure_fig_and_axes(analysis_dict)
             fig: Figure = analysis_dict["fig"]
             axes = axes_list(analysis_dict)
             match key:
@@ -403,6 +404,7 @@ def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[
             fig.tight_layout()
             output_file = f"slope_winds_ss_{exp}{file_index}.png"
             fig.savefig(f"{save_dir}/{output_file}", dpi=300)
+            fig.clear()
 
 
 def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index: str):
