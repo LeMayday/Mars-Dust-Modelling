@@ -2,6 +2,7 @@
 
 import torch
 from mars import *
+from typing import Callable
 
 A_N = 0.0123
 y = 3E-4                # kg / s^2
@@ -17,7 +18,7 @@ def vert_flux(vx: torch.Tensor, vy: torch.Tensor, rho: torch.Tensor, dx: float, 
     return H(vx) * dy + H(vy) * dx
 
 
-def hori_flux_calculator(rho: torch.Tensor, dz: float, D: float) -> torch.Tensor:
+def hori_flux_calculator(rho: torch.Tensor, dz: float, D: float) -> Callable[[torch.Tensor], torch.Tensor]:
     '''
     Uses a closure to store values that are the same for the x and y fluxes
     '''

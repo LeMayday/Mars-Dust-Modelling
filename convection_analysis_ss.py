@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import os
 import argparse
-from typing import List, Dict, TypedDict
+from typing import List, Dict, TypedDict, Callable
 from configure_yaml import is_implicit, is_3D, get_exp_res, Res
 from mars_topography import format_lat_long_string
 from mars import grav, gamma, M_bar, R_gas, q_dot 
@@ -246,7 +246,9 @@ def plot_theta_time_series(analysis_dict: Analysis_Config, experiment_names: Lis
     axes[-1].set_xlabel('Time (min)')
 
 
-def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int, filepath_constructor):
+def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
+               filepath_constructor: Callable[[str], str]):
+ 
     skip_main_loop = True
     for key, analysis_dict in plot_dict.items():
         if key != "hori_theta" and analysis_dict["flag"]:
@@ -346,7 +348,7 @@ def main():
     experiment_names: List[str] = args.experiment_names
     lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
     num_files: int = args.num_file
-    filepath_constructor = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}_{lat_long_str}"
+    filepath_constructor: Callable[[str], str] = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}_{lat_long_str}"
 
     # make plot output directory if it doesn't already exist
     save_directory = f"output/analysis_output"
