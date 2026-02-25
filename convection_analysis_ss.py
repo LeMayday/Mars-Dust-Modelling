@@ -12,7 +12,7 @@ import os
 import argparse
 from typing import List, Dict, TypedDict, Callable
 from configure_yaml import is_implicit, is_3D, get_exp_res, Res, get_num_cells_exp
-from mars_topography import format_lat_long_string, get_cell_topography
+from mars_topography import format_lat_long_string, get_cell_topography, configure_plot_axis_lat_long_labels
 from mars import grav, gamma, M_bar, R_gas, q_dot 
 from convection import assign_solid_tensor, heat_flux_mask, shift_terrain_data
 # for some reason, importing kintera and snapy makes the code not work due to some h5py issue
@@ -275,13 +275,13 @@ def plot_slope_winds(fig: Figure, axes: List[Axes], velx: NDArray, vely: NDArray
     ax2 = axes[1]
     ax2.set_title("Vertical Wind")
 
-    skip = 10
+    skip = 8
     velx = velx
     vely = vely
     magnitude = np.sqrt(velx**2 + vely**2)
     # add a tiny epsilon to avoid division by zero
-    u_norm = velx / (magnitude + 1e-10) * skip
-    v_norm = vely / (magnitude + 1e-10) * skip
+    u_norm = velx / (magnitude + 1e-10)
+    v_norm = vely / (magnitude + 1e-10)
 
     y_idx, x_idx = np.indices(u_norm.shape)
     q = ax1.quiver(x_idx[::skip, ::skip], y_idx[::skip, ::skip], u_norm[::skip, ::skip], v_norm[::skip, ::skip],
@@ -397,8 +397,9 @@ def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[
                 case "slope_winds":
                     plot_slope_winds(fig, axes, velx.values, vely.values, velz.values)
                     for ax in axes:
-                        ax.set_ylabel("Latitude [m] -> N")
-                        ax.set_xlabel("Longitude [m] -> E")
+                        ax.set_ylabel("Latitude -> N")
+                        ax.set_xlabel("Longitude -> E")
+                        configure_plot_axis_lat_long_labels(ax, *lat_long_bounds, nx2, nx3)
                         ax.contour(mars_data, 10, cmap='gray')
 
             fig.tight_layout()

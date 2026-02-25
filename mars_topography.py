@@ -6,6 +6,8 @@ import rasterio
 from rasterio.windows import Window
 from scipy.interpolate import interpn
 from typing import Tuple
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
 file_path = "image_files/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
 height_px = 23040
@@ -80,8 +82,17 @@ def format_lat_long_string(min_lat, max_lat, min_long, max_long) -> str:
     return f"{conv_lat(min_lat)}{conv_long(min_long)}{conv_lat(max_lat)}{conv_long(max_long)}"
 
 
+def configure_plot_axis_lat_long_labels(ax: Axes, min_lat: int, max_lat: int, min_long: int, max_long: int, num_cells_lat: int, num_cells_long):
+    xtick_locs = np.linspace(0, num_cells_long - 1, 5)
+    ytick_locs = np.linspace(0, num_cells_lat - 1, 5)
+    ax.set_xticks(xtick_locs); ax.set_yticks(ytick_locs)
+    xtick_labels = xtick_locs / num_cells_long * (max_long - min_long) + min_long
+    ytick_labels = ytick_locs / num_cells_lat * (max_lat - min_lat) + min_lat
+    ax.set_xticklabels([f'{x:.1f}' for x in xtick_labels])
+    ax.set_yticklabels([f'{y:.1f}' for y in ytick_labels])
+
+
 def main():
-    import matplotlib.pyplot as plt
     min_lat = -31 #-35
     max_lat = -29 #-25
     min_long = 74 #70
