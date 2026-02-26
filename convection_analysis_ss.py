@@ -459,8 +459,9 @@ def main():
         configure_fig_and_axes(analysis_dict)
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
-    make_BL_plots(plot_dict, experiment_names, num_files, filepath_constructor, args.lat_long_bounds, save_directory, file_index)
     save_plots(plot_dict, save_directory, file_index)
+    if topography:
+        make_BL_plots(plot_dict, experiment_names, num_files, filepath_constructor, args.lat_long_bounds, save_directory, file_index)
 
 
 if __name__ == "__main__":
