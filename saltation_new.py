@@ -33,4 +33,3 @@ def hori_flux_calculator(rho: torch.Tensor, dz: float, D: float) -> Callable[[to
         return torch.clamp(flux, min=0)
 
     return hori_flux
-

@@ -60,7 +60,6 @@ def get_num_cells(res: Res, threeD: bool) -> Tuple[int, int, int]:
 
 def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, threeD: bool):
     # define geometry
-
     geometry_type = 'cartesian'
     x1min = 0
     x1max = sim_properties.Dx1
@@ -70,7 +69,6 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
     x3max = sim_properties.Dx3
 
     nx1, nx2, nx3 = get_num_cells(res, threeD)
-
     geometry_dict = {'type': geometry_type,
                      'bounds': {'x1min': x1min, 'x1max': x1max,
                                 'x2min': x2min, 'x2max': x2max,
@@ -78,7 +76,6 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                      'cells':  {'nx1': nx1, 'nx2': nx2, 'nx3': nx3, 'nghost': nghost}}
 
     # define dynamics
-
     eos_type = 'ideal-gas'
     # see https://descanso.jpl.nasa.gov/propagation/mars/MarsPub_sec4.pdf
     # and https://www.meteor.iastate.edu/classes/mt452/Class_Discussion/Mars-physical_and_orbital_statistics.pdf
@@ -105,7 +102,6 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                     'riemann-solver': riemann_solver_dict}
 
     # define boundary conditions
-
     boundary_condition_dict = {'internal': {'solid-density': 1.E3,
                                             'solid-pressure':1.E9,
                                             'max-iter': 5},            
@@ -117,7 +113,6 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                                             'x3-outer': 'reflecting'}}
 
     # define integration scheme
-
     integration_dict = {'type': 'rk3',
                         'cfl': 0.45 if (threeD and not implicit) else 0.9,
                         'implicit-scheme': int(implicit),
@@ -126,11 +121,9 @@ def configure_yaml(sim_properties: Sim_Properties, implicit: bool, res: Res, thr
                         'ncycle_out':1000}
 
     # define forcing
-
     forcing_dict = {'const-gravity': {'grav1': -grav}}
 
     # define outputs
-
     # generate restart file every three hours, generate nc file every 30 mins
     outputs_dict = [{'type': 'restart', 'dt': 10800},
                     {'type': 'netcdf', 'variables': ['prim', 'uov'], 'dt': 1800}]
@@ -159,4 +152,3 @@ def generate_yaml(sim_properties: Sim_Properties, file_base: str, exp_name: str)
 def save_yaml(file_path, dictionary):
     with open(file_path, "w") as file_handler:
         yaml.dump(dictionary, file_handler, sort_keys=False)
-
