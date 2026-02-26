@@ -431,9 +431,12 @@ def main():
     file_index: str = args.index
     if file_index != "": file_index = "_" + file_index
     experiment_names: List[str] = args.experiment_names
-    lat_long_str = format_lat_long_string(*args.lat_long_bounds) if args.lat_long_bounds is not None else ""
+    if (topography := args.lat_long_bounds is not None):
+        lat_long_str = f"_{format_lat_long_string(*args.lat_long_bounds)}"
+    else:
+        lat_long_str = ""
     num_files: int = args.num_file
-    filepath_constructor: Callable[[str], str] = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}_{lat_long_str}"
+    filepath_constructor: Callable[[str], str] = lambda exp_name: f"{args.output_parent_dir}/output_{exp_name}{lat_long_str}"
 
     # make plot output directory if it doesn't already exist
     save_directory = f"output/analysis_output"
