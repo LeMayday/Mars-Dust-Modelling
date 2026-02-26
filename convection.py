@@ -278,8 +278,8 @@ def main(args):
         experiment_name = experiment_name + "_3D"
     # determine topographical information
     topography = args.lat_long_bounds is not None
+    nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
     if topography:
-        nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
         min_lat, max_lat, min_long, max_long = args.lat_long_bounds
         # must append lat/long at the end since other functions look at first two chars for I/E and C/F
         experiment_name = experiment_name + "_" + format_lat_long_string(min_lat, max_lat, min_long, max_long)
@@ -290,11 +290,12 @@ def main(args):
         Dx1 = 20E3
         assert Dx1 >= 16E3, "Domain height is not >~ 1.5 Mars scale heights"
         # TODO: need a way to appropriately choose atmospheric height if vertical domain is very large
-        print(Dx1, Dx2, Dx3)
     else:
         Dx1 = 20E3
         Dx2 = 80E3
         Dx3 = 80E3
+    print(f"Size: z: {Dx1:.2f}, y: {Dx2:.2f}, x: {Dx3:.2f} [m]")
+    print(f"Res: z: {Dx1/nx1:.2f}, y: {Dx2/nx2:.2f}, x: {Dx3/nx3:.2f} [m/cell]")
     print(f"Experiment name: {experiment_name}")
     sim_properties = Sim_Properties(Dx1, Dx2, Dx3, args.time_limit)
     # determine yaml input file
