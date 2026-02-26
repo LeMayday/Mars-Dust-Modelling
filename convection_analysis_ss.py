@@ -403,19 +403,19 @@ def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[
                         ax.contour(mars_data, 10, cmap='gray')
 
             fig.tight_layout()
-            output_file = f"slope_winds_ss_{exp}{file_index}.png"
+            output_file = f"slope_winds_ss_{exp}{format_lat_long_string(*lat_long_bounds)}{file_index}.png"
             fig.savefig(f"{save_dir}/{output_file}", dpi=300)
             fig.clear()
 
 
-def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, file_index: str):
+def save_plots(plot_dict: Dict[str, Analysis_Config], save_dir: str, lat_long_str: str, file_index: str):
     # finally, save all plots
     print("Saving plots...")
     for key, value in plot_dict.items():
         # inner loop is which experiments need info to be analyzed
         if value["flag"] and value["all_experiments"]:
             fig: Figure = value["fig"]
-            output_file = f"{key}_ss{file_index}.png"
+            output_file = f"{key}_ss{lat_long_str}{file_index}.png"
             fig.savefig(f"{save_dir}/{output_file}", dpi=300)
             plt.close(fig)
 
@@ -459,9 +459,9 @@ def main():
         configure_fig_and_axes(analysis_dict)
 
     make_plots(plot_dict, experiment_names, num_files, filepath_constructor)
-    save_plots(plot_dict, save_directory, file_index)
     if topography:
         make_BL_plots(plot_dict, experiment_names, num_files, filepath_constructor, args.lat_long_bounds, save_directory, file_index)
+    save_plots(plot_dict, save_directory, lat_long_str, file_index)
 
 
 if __name__ == "__main__":
