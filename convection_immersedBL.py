@@ -285,12 +285,11 @@ def main(args):
     topography = args.lat_long_bounds is not None
     nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
     if topography:
-        min_lat, max_lat, min_long, max_long = args.lat_long_bounds
         # must append lat/long at the end since other functions look at first two chars for I/E and C/F
-        experiment_name = experiment_name + "_" + format_lat_long_string(min_lat, max_lat, min_long, max_long)
+        experiment_name = experiment_name + "_" + format_lat_long_string(*args.lat_long_bounds)
         # 2nd dim will be lat, 3rd dim will be long
         # mars_data is a numpy array 
-        mars_data, Dx2, Dx3 = get_cell_topography(min_lat, max_lat, min_long, max_long, nx2, nx3)
+        mars_data, Dx2, Dx3 = get_cell_topography(*args.lat_long_bounds, nx2, nx3)
         # Dx1 = Dx2 / nx2 * nx1
         Dx1 = 20E3
         assert Dx1 >= 16E3, "Domain height is not >~ 1.5 Mars scale heights"
