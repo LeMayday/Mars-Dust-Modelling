@@ -278,6 +278,7 @@ def main(args):
         experiment_name = experiment_name + "_3D"
     # determine topographical information
     topography = args.lat_long_bounds is not None
+    print(f"Topography: {topography}")
     nx1, nx2, nx3 = get_num_cells_exp(experiment_name)
     if topography:
         # must append lat/long at the end since other functions look at first two chars for I/E and C/F
