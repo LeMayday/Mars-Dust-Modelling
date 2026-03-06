@@ -164,7 +164,7 @@ cython_debug/
 *output*/*.nc
 *.swp
 output_logs/*
-*.convection
+job/
 *.nc
 .vscode
 .nfs*
