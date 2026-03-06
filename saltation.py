@@ -104,7 +104,7 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     #return U_friction**3 * (1 - R) * (1 + R**2) * rho_p / rho_p_over_rho / g
 
 # takes an array of N particle diameter sizes and a total supply and returns an array of N-1 densities for N-1 diameter buckets
-def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
+def surface_dust_supply(diameters: NDArray, rho_p: int, source_area_density: int, l: int) -> NDArray:
     max_d = np.max(diameters)
     min_d = np.min(diameters)
     if l == 4:
@@ -113,10 +113,9 @@ def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
         A = 8 * source_area_density * (4 - l) / (rho_p * (max_d**(4 - l) - min_d**(4 - l)))
     supply_per_D = rho_p * (diameters / 2)**3 * A * diameters**(-l)
     # need to multiply by size of bucket (equivalent to differential element dD)
-    for i in range(len(supply_per_D) - 1):
-        # left hand value taken as size for bucket
-        supply_per_D[i] = supply_per_D[i] * (diameters[i+1] - diameters[i])
-    return supply_per_D[:-1]
+    # left hand value taken as size for bucket
+    supply_per_D = supply_per_D[:-1] * np.convolve(diameters, [1, -1])[1:-1]
+    return supply_per_D
 
 def plot_bucket_depletion(diameters: NDArray, bucket_times: NDArray):
     fig, ax = plot_loglog(diameters[:-1], bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
