@@ -11,6 +11,7 @@
 ########################### Global Variables ###########################
 
 import numpy as np
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.figure import Figure
@@ -77,7 +78,7 @@ def plot_loglog_contour(X, Y, Z, levels):
     return fig, ax
 
 # takes vector input and performs root finding for each element in the vector
-def find_threshold_speeds(diameters: np.ndarray) -> np.ndarray:
+def find_threshold_speeds(diameters: NDArray) -> NDArray:
     speeds = np.zeros_like(diameters)
     for i, d in np.ndenumerate(diameters):
         func = lambda u : A_minus_A_func(d, u)
@@ -117,7 +118,7 @@ def surface_dust_supply(diameters: np.ndarray) -> np.ndarray:
         supply_per_D[i] = supply_per_D[i] * (diameters[i+1] - diameters[i])
     return supply_per_D[:-1]
 
-def plot_bucket_depletion(diameters, bucket_times):
+def plot_bucket_depletion(diameters: NDArray, bucket_times: NDArray):
     fig, ax = plot_loglog(diameters[:-1], bucket_times, "Particle Diameter (um)", "Time to Deplete (s)")
     # plot vertical lines for cutoff diameters where flux drops to 0
     min_diameter_index = np.argmax(np.isfinite(bucket_times))
@@ -135,11 +136,11 @@ def plot_bucket_depletion(diameters, bucket_times):
         ax.text(max_diameter, ylims[1], "{:.1f}".format(max_diameter), verticalalignment='bottom', horizontalalignment='center')
     return fig
 
-def plot_density_distribution(diameters, densities):
+def plot_density_distribution(diameters: NDArray, densities: NDArray):
     fig, ax = plot_loglog(diameters[:-1] * 1E4, densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
     return fig
 
-def plot_loglog(x, y, xlabel, ylabel) -> Tuple[Figure, Axes]:
+def plot_loglog(x: NDArray, y: NDArray, xlabel: str, ylabel: str) -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots()
     ax.loglog(x, y)
     #ax.set_xscale('log')
