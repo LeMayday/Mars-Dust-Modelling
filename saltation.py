@@ -136,7 +136,7 @@ def plot_bucket_depletion(diameters: NDArray, bucket_times: NDArray):
     return fig
 
 def plot_density_distribution(diameters: NDArray, densities: NDArray):
-    fig, ax = plot_loglog(diameters[:-1] * 1E4, densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
+    fig, ax = plot_loglog(diameters[:-1], densities, "Particle Diameter (um)", "Bucket Density (mass per unit space)")
     return fig
 
 def plot_loglog(x: NDArray, y: NDArray, xlabel: str, ylabel: str) -> Tuple[Figure, Axes]:
@@ -150,33 +150,37 @@ def plot_loglog(x: NDArray, y: NDArray, xlabel: str, ylabel: str) -> Tuple[Figur
 
 ################################ Script ################################
 
-num_pts = 200
-u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
-particle_diameters = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
-u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
+def main():
+    num_pts = 200
+    u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
+    particle_diameters = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
+    u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
 
-#plot_contour(particle_diameters, u_star_t)
+    # plot_contour(particle_diameters, u_star_t)
 
-flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
-np.save("flux_tensor.npy", flux_tensor)
+    flux_tensor = generate_flux_tensor(particle_diameters, u_freestream)
+    # np.save("flux_tensor.npy", flux_tensor)
 
-# fig = plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
-# fig.savefig("fluxes_per_L.png")
+    # # fig = plot_flux(particle_diameters, u_freestream, "flux_tensor_old.npy", [0, 1, 2, 4, 6, 10, 15, 20, 30, 40, 60])
+    # # fig.savefig("fluxes_per_L.png")
 
-fig = plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", 10)
-fig.savefig("fluxes.png")
+    # fig = plot_flux(particle_diameters, u_freestream, "flux_tensor.npy", 10)
+    # fig.savefig("fluxes.png")
 
-interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
+    interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
-u_test = np.array([5, 10, 20]) * 1E2
-bucket_densities = surface_dust_supply(particle_diameters)
+    u_test = np.array([5, 10, 20]) * 1E2
+    bucket_densities = surface_dust_supply(particle_diameters, rho_p, source_area_density, l)
 
-fig = plot_density_distribution(particle_diameters, bucket_densities)
-fig.savefig("diameter_v_bucket_densities_l_%s.png" %(l))
+    fig = plot_density_distribution(particle_diameters * 1E4, bucket_densities)
+    fig.savefig("diameter_v_bucket_densities_l_%s.png" %(l))
 
-for u in u_test:
-    sample_pts = np.array([particle_diameters[:-1], np.full_like(bucket_densities, u)]).T
-    fluxes = interp(sample_pts)
-    times = bucket_densities / fluxes
-    fig = plot_bucket_depletion(particle_diameters * 1E4, times)
-    fig.savefig("diameter_v_deplete_time_%s_cm_s.png" %(u))
+    for u in u_test:
+        sample_pts = np.array([particle_diameters[:-1], np.full_like(bucket_densities, u)]).T
+        fluxes = interp(sample_pts)
+        times = bucket_densities / fluxes
+        fig = plot_bucket_depletion(particle_diameters * 1E4, times)
+        fig.savefig("diameter_v_deplete_time_%s_cm_s.png" %(u))
+
+if __name__ == "__main__":
+    main()
