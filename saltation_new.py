@@ -32,7 +32,7 @@ def hori_flux_calculator(rho: float, dz: float, D: torch.Tensor) -> Callable[[fl
         v_fric = a * v
         v_ratio_sq = v_fric_thresh_sq / v_fric**2
         flux = b * v_fric**3 * (1 - v_ratio_sq) * (7.0 + 50.0 * v_ratio_sq)
-        return torch.clamp(flux, min=0)
+        return torch.nan_to_num(torch.clamp(flux, min=0), nan=0)
 
     return hori_flux
 
