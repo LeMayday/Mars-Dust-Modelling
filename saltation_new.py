@@ -1,6 +1,7 @@
 # saltation-related functions to be used with snapy model
 
 import torch
+import math
 from mars import *
 from typing import Callable
 from saltation import surface_dust_supply, plot_density_distribution, plot_bucket_depletion
@@ -23,7 +24,7 @@ def hori_flux_calculator(rho: float, dz: float, D: torch.Tensor) -> Callable[[fl
     '''
     Uses a closure to store values that are the same for the x and y fluxes
     '''
-    a = K / torch.log(dz * inv_z0)
+    a = K / math.log(dz * inv_z0)
     b = 0.25 * rho * inv_grav
     v_fric_thresh_sq = A_N * (rho_p / rho * grav * D + y / D / rho)
 
