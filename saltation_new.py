@@ -47,7 +47,7 @@ def main():
     vy = 10
     nbins = 10
     D = torch.logspace(-6, -5, nbins + 1)   # m
-    Q = vert_flux(vx, vy, rho0, dx, dy, dz, D)
+    Q = vert_flux(vx, vy, rho0, dx, dy, dz, D[:-1]).numpy()
 
     source_area_density = 1E6       # kg / m^2
     l = 3
