@@ -53,12 +53,13 @@ def main():
     rho0 = p0 / (R * Ts)
 
     vx = 0
-    vy = 10
+    vy = 50
     nbins = 10
-    D = torch.logspace(-6, -5, nbins + 1)   # m
+    D = torch.logspace(-5, -4, nbins + 1)   # m
     Q = vert_flux(vx, vy, rho0, dx, dy, dz, D[:-1]).numpy()
 
-    source_area_density = 1E6       # kg / m^2
+    source_area_density = 1E2       # kg / m^2
+    source_area_density *= dx * dy
     l = 3
     rho_p = 2650                    # kg / m^3
     bucket_densities = surface_dust_supply(D.numpy(), rho_p, source_area_density, l)
