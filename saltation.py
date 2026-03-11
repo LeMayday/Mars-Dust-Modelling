@@ -94,7 +94,7 @@ def generate_flux_tensor(particle_diameters, u_freestream):
     U_threshold, U_fs = np.meshgrid(u_threshold, u_freestream, indexing="ij")
     # skin-friction coefficient from [3] pg 577 eq. 18.76
     # advised to set as 0.5
-    Cf = 0.5
+    Cf = 0.1#0.5
     U_friction = U_fs * Cf
     # when R = 1, G = 0. If U_friction < U_threshold (R > 1), then particles will not lift off
     R = np.minimum(U_threshold / U_friction, np.ones_like(U_friction))
@@ -154,7 +154,7 @@ def main():
     num_pts = 200
     u_star_t = np.geomspace(1, 10, num_pts) * 1E2                       # cm/s
     particle_diameters = np.geomspace(10, 1000, num_pts) * 1E-4                        # cm
-    u_freestream = np.geomspace(0.5, 30, num_pts) * 1E2                 # cm/s
+    u_freestream = np.geomspace(0.5, 60, num_pts) * 1E2                 # cm/s
 
     # plot_contour(particle_diameters, u_star_t)
 
@@ -169,7 +169,7 @@ def main():
 
     interp = RegularGridInterpolator((particle_diameters, u_freestream), flux_tensor, bounds_error=False)
 
-    u_test = np.array([5, 10, 20]) * 1E2
+    u_test = np.array([5, 10, 20, 50]) * 1E2
     bucket_densities = surface_dust_supply(particle_diameters, rho_p, source_area_density, l)
 
     fig = plot_density_distribution(particle_diameters * 1E4, bucket_densities)
