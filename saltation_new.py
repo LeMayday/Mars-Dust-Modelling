@@ -17,16 +17,17 @@ nu = 11.19E-4           # m^2 / s
 
 
 def vert_flux(vx: float, vy: float, rho: float, dx: float, dy: float, dz: float, D: torch.Tensor) -> torch.Tensor:
-    H = hori_flux_calculator((vx**2 + vy**2)**(1/2), rho, dx, dz, D)
+    H = hori_flux_calculator(rho, dz, D)
     return H(vx) * dy + H(vy) * dx
 
 
-def hori_flux_calculator(v_mag: float, rho: float, dx: float, dz: float, D: torch.Tensor) -> Callable[[float], torch.Tensor]:
+def hori_flux_calculator(rho: float, dz: float, D: torch.Tensor) -> Callable[[float], torch.Tensor]:
     '''
     Uses a closure to store values that are the same for the x and y fluxes
     '''
     # a = K / math.log(dz * inv_z0)
-    a = K / math.log(BL_thickness(v_mag, dx) * inv_z0)
+    # a = K / math.log(BL_thickness(v_mag, dx) * inv_z0)
+    a = 0.1
     b = 0.25 * rho * inv_grav
     v_fric_thresh_sq = A_N * (rho_p / rho * grav * D + y / D / rho)
 
