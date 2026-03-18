@@ -108,16 +108,15 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
         block_vars["hydro_w"] = w
 
         diameters = torch.tensor(surf.options.diameters())
-        print(surf.nbins())
-        print(diameters)
         source_area_density = 1E2       # kg / m^2
-        dx3 = coord.buffer("dx3f")[0]
-        dx2 = coord.buffer("dx2f")[0]
-        source_area_density *= dx3 * dx2    # kg
+        dx3: torch.Tensor = coord.buffer("dx3f")[0]
+        dx2: torch.Tensor = coord.buffer("dx2f")[0]
+        source_area_density *= dx3 * dx2    # kg (note fluxes are computed as kg/s)
+        source_area_density = source_area_density.cpu().numpy() # convert tensor of scalar value to numpy
         l = 3
         rho_p = 2650                    # kg / m^3
-        bucket_densities = torch.tensor(surface_dust_supply(diameters.numpy(), rho_p, source_area_density, l))
-        block_vars["surface_r"] = bucket_densities.view(surf.nbins(), 1, 1).expand(surf.nbins(), nc3, nc2)
+        bucket_densities = torch.tensor(surface_dust_supply(diameters.numpy(), rho_p, source_area_density, l))  # essentially kg/cell not kg/m^2
+        block_vars["surface_r"] = bucket_densities.view(surf.nbins(), 1, 1).expand(surf.nbins(), nc3, nc2).to(device)
 
         block_vars, current_time = block.initialize(block_vars)
 
