@@ -136,7 +136,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
         block.print_cycle_info(block_vars, current_time, dt)
 
         u = block_vars["hydro_u"]
-        surface_u = block_vars["surface_u"]
+        surface_u = block_vars["surface_s"]
         times_to_deplete[surface_u > 0] += dt
         for stage in range(len(block.intg.stages)):
             block.forward(block_vars, dt, stage)
