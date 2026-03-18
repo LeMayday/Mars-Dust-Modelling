@@ -359,6 +359,12 @@ def make_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str
 
 def make_BL_plots(plot_dict: Dict[str, Analysis_Config], experiment_names: List[str], num_files_to_avg: int,
                   filepath_constructor: Callable[[str], str], lat_long_bounds: List[str], save_dir: str, file_index: int):
+    skip_main_loop = True
+    for key, analysis_dict in plot_dict.items():
+        if analysis_dict["flag"] and not analysis_dict["all_experiments"]:
+            skip_main_loop = False
+    if skip_main_loop:
+        return
     for i, exp in enumerate(experiment_names):          # outer loop is experiment so only one set of data is loaded at a time
         print("Retrieving Topography Data")
         _, nx2, nx3 = get_num_cells_exp(exp)
