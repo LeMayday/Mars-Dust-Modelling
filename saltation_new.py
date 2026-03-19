@@ -51,6 +51,8 @@ def main():
     dz = 20E3 / 64
     R = R_gas / M_bar
     rho0 = p0 / (R * Ts)
+    # rho0 = 0.0154399
+    # rho0 = 0.015441
 
     vx = 0
     vy = 50
@@ -69,6 +71,12 @@ def main():
     times = bucket_densities / Q
     fig = plot_bucket_depletion(D.numpy() * 1E6, times)
     fig.savefig(f"diameter_v_deplete_time_{vy}_m_s.png")
+
+    snap_data: torch.Tensor = torch.load("surf_dust_test_deplete_times.pt")
+    snap_data = snap_data.cpu().numpy()[:, 0, 0]
+    fig = plot_bucket_depletion(D.numpy() * 1E6, snap_data)
+    fig.savefig(f"diameter_v_deplete_time_50_m_s_snap.png")
+
 
 if __name__ == "__main__":
     main()
