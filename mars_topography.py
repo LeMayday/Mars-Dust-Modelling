@@ -94,6 +94,23 @@ def get_cell_topography(region: Region, num_cells_lat, num_cells_long) -> Tuple[
     return cell_data, m_per_px * num_pixels_lat, m_per_px * num_pixels_long 
 
 
+def get_mars_data_from_yaml_config(input_file: str) -> NDArray | None:
+    with open(input_file, "r", encoding="utf-8") as stream:
+        config: dict = yaml.safe_load(stream)
+    region_info = config.get("region")
+    if region_info is None:
+        return None
+    min_lat = float(region_info["min-lat"])
+    max_lat = float(region_info["max-lat"])
+    min_long = float(region_info["min-long"])
+    max_long = float(region_info["max-long"])
+    nx2 = config["geometry"]["cells"]["nx2"]
+    nx3 = config["geometry"]["cells"]["nx3"]
+    mars_data, Dx2, Dx3 = get_cell_topography(Region(min_lat, max_lat, min_long, max_long), nx2, nx3)
+    Dx2_yaml = config["geometry"]["bounds"]["x2max"] - config["geometry"]["bounds"]["x2min"]
+    Dx3_yaml = config["geometry"]["bounds"]["x3max"] - config["geometry"]["bounds"]["x3min"]
+    assert Dx2 == Dx2_yaml and Dx3 == Dx3_yaml, "Domain size does not match region size."
+    return mars_data
 
 
 def configure_plot_axis_lat_long_labels(ax: Axes, region: Region, num_cells_lat: int, num_cells_long):
