@@ -8,12 +8,40 @@ from scipy.interpolate import interpn
 from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+import yaml
+from dataclasses import dataclass
 
 file_path = "image_files/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
 height_px = 23040
 width_px = 46080
 # m_per_px = 463.093541550370901
 m_per_px = 463
+
+
+@dataclass(frozen=True)
+class Region():
+    min_lat: int
+    max_lat: int
+    min_long: int
+    max_long: int
+
+    def __post_init__(self):
+        '''
+        lat should be [-90, 90]
+        long should be [-180, 180]
+        '''
+        if self.min_lat >= self.max_lat or self.min_long >= self.max_long:
+            raise ValueError("Min value cannot be greater than max value.")
+        if self.min_lat < -90 or self.max_lat > 90:
+            raise ValueError("Lat bounds must be in [-90, 90].")
+        if self.min_long < -180 or self.max_long > 180:
+            raise ValueError("Long bounds must be in [-180, 180].")
+
+    def to_string(self) -> str:
+        conv_lat = lambda lat: f"{abs(lat)}" + ("N" if lat >= 0 else "S")
+        conv_long = lambda lon: f"{abs(lon)}" + ("W" if lon >= 0 else "E")
+        return f"{conv_lat(self.min_lat)}{conv_long(self.min_long)}
+                 {conv_lat(self.max_lat)}{conv_long(self.max_long)}"
 
 
 def load_MOLA_DEM_data(window: Window) -> NDArray:
@@ -34,32 +62,22 @@ def long_to_pix(input_long):
     return (input_long + 180) * width_px // 360
 
 
-def get_region_topography(min_lat, max_lat, min_long, max_long) -> NDArray:
-    '''
-    lat should be [-90, 90]
-    long should be [-180, 180]
-    '''
-    if min_lat >= max_lat or min_long >= max_long:
-        raise ValueError("Min value cannot be greater than max value.")
-    if min_lat < -90 or max_lat > 90:
-        raise ValueError("Lat bounds must be in [-90, 90].")
-    if min_long < -180 or max_long > 180:
-        raise ValueError("Long bounds must be in [-180, 180].")
-
+def get_region_topography(region: Region) -> NDArray:
     # (max_lat, min_lat) is right for viewing, but not for data being stored in order of increasing latitude
     # need to window (max_lat, min_lat) since image has (0,0) in top left
-    w = Window.from_slices((lat_to_pix(max_lat), lat_to_pix(min_lat) + 1), (long_to_pix(min_long), long_to_pix(max_long) + 1))
+    w = Window.from_slices((lat_to_pix(region.max_lat), lat_to_pix(region.min_lat) + 1),
+                           (long_to_pix(region.min_long), long_to_pix(region.max_long) + 1))
     mars_data = load_MOLA_DEM_data(w)
     # flip about lat axis so min lat is at pos 0
     mars_data = np.flip(mars_data, axis=0)
     return mars_data
 
 
-def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num_cells_long) -> Tuple[NDArray, int, int]:
+def get_cell_topography(region: Region, num_cells_lat, num_cells_long) -> Tuple[NDArray, int, int]:
     '''
     returns interpolated values plus (lat, long) dimensions in m
     '''
-    mars_data = get_region_topography(min_lat, max_lat, min_long, max_long)
+    mars_data = get_region_topography(region)
     num_pixels_lat = mars_data.shape[0]
     num_pixels_long = mars_data.shape[1]
 
@@ -76,18 +94,14 @@ def get_cell_topography(min_lat, max_lat, min_long, max_long, num_cells_lat, num
     return cell_data, m_per_px * num_pixels_lat, m_per_px * num_pixels_long 
 
 
-def format_lat_long_string(min_lat, max_lat, min_long, max_long) -> str:
-    conv_lat = lambda lat: f"{abs(lat)}" + ("N" if lat >= 0 else "S")
-    conv_long = lambda lon: f"{abs(lon)}" + ("W" if lon >= 0 else "E")
-    return f"{conv_lat(min_lat)}{conv_long(min_long)}{conv_lat(max_lat)}{conv_long(max_long)}"
 
 
-def configure_plot_axis_lat_long_labels(ax: Axes, min_lat: int, max_lat: int, min_long: int, max_long: int, num_cells_lat: int, num_cells_long):
+def configure_plot_axis_lat_long_labels(ax: Axes, region: Region, num_cells_lat: int, num_cells_long):
     xtick_locs = np.linspace(0, num_cells_long - 1, 5)
     ytick_locs = np.linspace(0, num_cells_lat - 1, 5)
     ax.set_xticks(xtick_locs); ax.set_yticks(ytick_locs)
-    xtick_labels = xtick_locs / num_cells_long * (max_long - min_long) + min_long
-    ytick_labels = ytick_locs / num_cells_lat * (max_lat - min_lat) + min_lat
+    xtick_labels = xtick_locs / num_cells_long * (region.max_long - region.min_long) + region.min_long
+    ytick_labels = ytick_locs / num_cells_lat * (region.max_lat - region.min_lat) + region.min_lat
     ax.set_xticklabels([f'{x:.1f}' for x in xtick_labels])
     ax.set_yticklabels([f'{y:.1f}' for y in ytick_labels])
 
@@ -99,8 +113,9 @@ def main():
     max_long = 76 #80
 
     # reference region against https://oderest.rsl.wustl.edu/GDSWeb/GDSMOLAPEDR.html
-    mars_data_true = get_region_topography(min_lat, max_lat, min_long, max_long)
-    mars_data_false, _, _ = get_cell_topography(min_lat, max_lat, min_long, max_long, 256, 256)
+    region = Region(min_lat, max_lat, min_long, max_long)
+    mars_data_true = get_region_topography(region)
+    mars_data_false, _, _ = get_cell_topography(region, 256, 256)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,6))
     im1 = ax1.imshow(mars_data_true, cmap='gray')
     fig.colorbar(im1, ax=ax1)
