@@ -40,8 +40,8 @@ class Region():
     def to_string(self) -> str:
         conv_lat = lambda lat: f"{abs(lat)}" + ("N" if lat >= 0 else "S")
         conv_long = lambda lon: f"{abs(lon)}" + ("W" if lon >= 0 else "E")
-        return f"{conv_lat(self.min_lat)}{conv_long(self.min_long)}
-                 {conv_lat(self.max_lat)}{conv_long(self.max_long)}"
+        return (f"{conv_lat(self.min_lat)}{conv_long(self.min_long)}"
+                f"{conv_lat(self.max_lat)}{conv_long(self.max_long)}")
 
 
 def load_MOLA_DEM_data(window: Window) -> NDArray:
