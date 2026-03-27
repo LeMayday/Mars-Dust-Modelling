@@ -66,6 +66,4 @@ def handle_input(args = None):
     args = parser.parse_args(args)
 
     output_dir, _ = os.path.split(args.input_file)
-    input_file = f"{output_dir}/{args.input_file}"
-
-    return input_file, output_dir, args.restart_file
+    return args.input_file, output_dir, args.restart_file

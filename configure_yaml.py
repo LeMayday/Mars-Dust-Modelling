@@ -128,11 +128,10 @@ def generate_yaml_file(exp: Experiment, tlim: int, prefix: str, output_parent_di
         os.makedirs(output_dir)
     except FileExistsError:
         pass
-    file_base = f"{output_dir}/{prefix}"
     # Note: output files are generated with a basename that is the same as the yaml file
     # snapy 1.2.6 meshblock_options.cpp line 19 and netcdf.cpp line 86
     # so yaml files and output nc files should be stored in the same directory for a given experiment
-    file_path = f"{file_base}_{exp.name}.yaml"
+    file_path = f"{output_dir}/{prefix}_{exp.name}.yaml"
     full_dictionary = configure_yaml(exp, tlim)
     with open(file_path, "w") as file_handler:
         yaml.dump(full_dictionary, file_handler, sort_keys=False)
