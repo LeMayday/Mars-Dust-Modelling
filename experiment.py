@@ -25,27 +25,31 @@ def get_res_multiplier(res: Res):
 
 @dataclass(frozen=True)
 class Experiment():
-    name: str
+    _name: str
     region: Region = None
 
     def __post_init__(self):
         first_letters = ['I', 'E']
         second_letters = ['C', 'F']
-        if self.name[0] not in first_letters:
+        if self._name[0] not in first_letters:
             raise ValueError("Unexpected letter in experiment name at position 0.")
-        if self.name[1] not in second_letters:
+        if self._name[1] not in second_letters:
             raise ValueError("Unexpected letter in experiment name at position 1.")
+
+    @property
+    def name(self) -> str:
         if self.region is not None:
-            self.name += "_" + self.region.to_string()
+            return self._name + "_" + self.region.to_string()
+        return self._name
 
     def is_implicit(self) -> bool:
-        return self.name[0] == 'I'
+        return self._name[0] == 'I'
 
     def is_3D(self) -> bool:
-        return '_3D' in self.name
+        return '_3D' in self._name
 
     def res(self) -> Res:
-        match self.name[1]:
+        match self._name[1]:
             case 'C':
                 return Res.COURSE
             case 'F':
