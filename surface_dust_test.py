@@ -33,6 +33,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     interior_geom = interior[1:]
 
     coord = block.module("coord")
+    eos = block.module("hydro.eos")
     surf = block.module("surface")
 
     x3v, x2v, x1v = torch.meshgrid(
@@ -42,7 +43,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     nc3 = coord.buffer("x3v").shape[0]
     nc2 = coord.buffer("x2v").shape[0]
     nc1 = coord.buffer("x1v").shape[0]
-    nvar = 5
+    nvar = eos.nvar()
 
     Rd = kintera.constants.Rgas / kintera.species_weights()[0]
     cv = kintera.species_cref_R()[0] * Rd
