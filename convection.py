@@ -197,7 +197,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     else:
         print("Initializing block variables.")
         # data is stored [x, y, z] so z is adjacent in memory, sometimes x is 1 (if 2D)
-        with open(input, "r", encoding="utf-8") as stream:
+        with open(input_file, "r", encoding="utf-8") as stream:
             config = yaml.safe_load(stream)
         Ts = float(config["problem"]["Ts"]),
         p0 = float(config["problem"]["Ps"]),
