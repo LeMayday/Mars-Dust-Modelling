@@ -31,7 +31,7 @@ def call_user_output(bvars, p0, Rd, cp):
 
 def select_device(block: MeshBlock, options: MeshBlockOptions) -> torch.device:
     if torch.cuda.is_available(): # and options.layout().backend() == "nccl":
-        return torch.device(block.device())
+        return torch.device("cuda")
     return torch.device("cpu")
 
 
