@@ -50,7 +50,7 @@ def heat_flux_mask(solid_tensor: torch.Tensor) -> torch.Tensor:
     return q_mask
 
 
-def pad_tensor(input_tensor: torch.Tensor, nghost: int) -> torch.Tensor:
+def pad_tensor(input_tensor: torch.Tensor, nghost: int, mode='replicate') -> torch.Tensor:
     '''
     Requires input tensor not be boolean.
     '''
@@ -60,11 +60,11 @@ def pad_tensor(input_tensor: torch.Tensor, nghost: int) -> torch.Tensor:
         # pad in 3D only works for 4D tensor-- add/remove dummy dimension
         # pads last 3 dims of 4D tensor
         temp = input_tensor.unsqueeze(0)
-        temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode='replicate')
+        temp = F.pad(temp, (nghost, nghost, nghost, nghost, nghost, nghost), mode=mode)
         temp = temp.squeeze(0)
     else:                               # 2D
         # pads last 2 dims of 3D tensor
-        temp = F.pad(input_tensor, (nghost, nghost, nghost, nghost), mode='replicate')
+        temp = F.pad(input_tensor, (nghost, nghost, nghost, nghost), mode=mode)
     return temp
 
 
