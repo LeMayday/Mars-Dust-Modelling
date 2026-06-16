@@ -1,0 +1,17 @@
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pytorch
+  - numpy
+  - matplotlib
+  - scipy
+  - pyyaml
+  - pyamrex
+  - xarray
+  - rasterio
+  - pip
+  - pip:
+    - kintera
+    - snapy
