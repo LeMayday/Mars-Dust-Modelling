@@ -4,10 +4,10 @@ import kintera
 from snapy import MeshBlockOptions, MeshBlock
 from snapy import kIDN, kIV1, kIV2, kIV3, kIPR
 import yaml
+from amrex import space3d as amr
 
 # local files
 from mars import q_dot
-from mars_topography import get_mars_data_from_yaml_config
 from experiment import handle_input
 from convection import call_user_output, select_device, shift_terrain_data, assign_solid_tensor, heat_flux_mask, pad_tensor
 
@@ -17,6 +17,75 @@ from typing import Optional
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
 debug = False
+
+
+def calculate_cell_properties_2D(a: int, b: int, coord):
+    f = lambda x2: -a * torch.abs(1/b * (torch.remainder(x2, 2*b) - b)) + a
+    nc3 = coord.ku() - coord.kl() + 1
+    nc2 = coord.ju() - coord.jl() + 1
+    nc1 = coord.iu() - coord.il() + 1
+    x1f = torch.arange(nc1 + 1)
+    x2f = torch.arange(nc2 + 1)
+    x3f = torch.arange(nc3 + 1)
+    X3f, X2f, X1f = torch.meshgrid(x3f, x2f, x1f, indexing="ij")    # nc3 + 1 x nc2 + 1 x nc1 + 1
+    cfa3_frac = torch.ones(nc3 + 1, nc2, nc1)   # nc3 + 1, nc2, nc1
+    cfa2_frac = torch.minimum(X1f[:-1, :, 1:] - torch.maximum(f(X2f) - X1f)[:-1, :, :-1], 0)    # nc3 x nc2 + 1 x nc1
+
+    cfa1_x = (X1f - f(X2f)[:, :-1, :]) / (f(X2f)[:, 1:, :] - f(X2f)[:, :-1, :]) + X2f[:, :-1, :]
+
+    x1v = torch.arange(nc1)
+    x2v = torch.arange(nc2)
+    X2v, X1v = torch.meshgrid(x2v, x1v, indexing="ij")
+    intercepts2 = f(x2f)
+    areas2 = torch.remainder(intercepts2, 1)
+    below_ground = intercepts2
+    
+    
+    
+    # return cfa2_frac, cfa1, cvol
+
+
+def func(coord):
+    amr.initialize()
+
+    # Define interior domain
+    nx, ny, nz = 64, 64, 16
+
+    rb = amr.RealBox(torch.tensor([0.0, 0.0, 0.0]), torch.tensor([1.0, 1.0, 1.0]))
+    coord = 0  
+    domain = amr.Box(amr.IntVect(0,0,0), amr.IntVect(nx-1, ny-1, nz-1))
+    geom = amr.Geometry(domain, rb, 0, False)
+
+    dx, dy, dz = geom.CellSize()
+    dV = dx * dy * dz
+
+    # Define geometry and build
+    sphere_implicit = amr.EB2.SphereIF(0.3, [0.5, 0.5, 0.5], True)
+    gshop = amr.EB2.makeShop(sphere_implicit)
+    amr.EB2_Build(gshop, geom, 0, 0)
+
+    # Build distribution maps (forcing a single global patch for extraction)
+    ba = amr.BoxArray(domain)
+    ba.maxSize(max(nx, ny, nz)) 
+    dm = amr.DistributionMapping(ba)
+
+    # Request zero ghost cells (ngrow = 0)
+    ngrow = amr.Vector_int([0, 0, 0])
+    eb_factory = amr.makeEBFabFactory(geom, ba, dm, ngrow, amr.EBSupport.full)
+
+    vol_frac_mf = eb_factory.getVolFrac()
+    area_frac_mf = eb_factory.getAreaFrac() # Index 0=X, 1=Y, 2=Z
+
+    # Loop over the singular main domain tile
+    for mfi in vol_frac_mf:
+        # mfi.tilebox() restricts the extracted array strictly to the 64x64x16 interior
+        interior_box = mfi.tilebox()
+        
+        # 1. Extract Volumes -> Shape: (64, 64, 16)
+        vol_frac_array = vol_frac_mf[mfi].to_array(interior_box)
+        interior_volumes = vol_frac_array * dV
+    
+    
 
 
 def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
@@ -132,11 +201,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
 
 def main():
     input_file, output_dir, restart_file = handle_input()
-    mars_data = get_mars_data_from_yaml_config(input_file)
-    if mars_data is None:
-        run_with(input_file, output_dir, restart_file)
-    else:
-        run_with(input_file, output_dir, restart_file, torch.from_numpy(mars_data))
+    run_with(input_file, output_dir, restart_file)
 
 
 if __name__ == "__main__":
