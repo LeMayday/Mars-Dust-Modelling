@@ -19,7 +19,13 @@ torch.manual_seed(42)
 debug = False
 
 
-def side_face_areas(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coord: Cartesian, res: int = 1):
+def func(x3: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+    a = 3 * 125
+    b = 4 * 125
+    return -a * torch.abs(1/b * (torch.remainder(x2, 2*b) - b)) + a + 0*x3
+
+
+def cell_properties(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coord: Cartesian, device: torch.device, res: int = 1):
     x3f = coord.buffer("x3f")[coord.kl() : coord.ku() + 2]  # (nc3+1)
     x2f = coord.buffer("x2f")[coord.jl() : coord.ju() + 2]  # (nc2+1)
     x1f = coord.buffer("x1f")[coord.il() : coord.iu() + 2]  # (nc1+1)
@@ -45,7 +51,7 @@ def side_face_areas(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coo
     face_area_x3x1 = torch.trapz(h_x3x1, x=cell_X3.expand_as(h_x3x1), dim=3).squeeze(-1)    # (nc3, nc2+1, nc1)
     
     z_surf = F(cell_X3, cell_X2)        # (nc3, nc2, 1, res+1, res+1)
-    is_below = (X1f >= z_surf).float()   # (nc3, nc2, nc1+1, res+1, res+1) --- note >= since I want to count a corner like this as an edge of the domain
+    is_below = (X1f >= z_surf).float()  # (nc3, nc2, nc1+1, res+1, res+1) --- note >= since I want to count a corner like this as an edge of the domain
     int_x3 = torch.trapz(is_below, x=cell_X3.expand_as(is_below), dim=3)    # (nc3, nc2, nc1+1, res+1)
     cell_X2_sqz = cell_X2.squeeze(3).expand_as(int_x3)  # collapse over integrated dimension
     face_area_x3x2 = torch.trapz(int_x3, x=cell_X2_sqz, dim=3)              # (nc3, nc2, nc1+1)
