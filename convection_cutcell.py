@@ -43,11 +43,11 @@ def cell_properties(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coo
     z0 = X1f[:, :, :-1, :, :]   # (1, 1, nc1, 1, 1)
     dz = z1 - z0
     z_surf = F(X3f, cell_X2)    # (nc3+1, nc2, 1, 1, res+1)
-    h_x2x1 = torch.clamp(z1 - z_surf, min=0, max=dz)
+    h_x2x1 = torch.clamp(z1 - z_surf, min=torch.zeros_like(dz), max=dz)
     face_area_x2x1 = torch.trapz(h_x2x1, x=cell_X2.expand_as(h_x2x1), dim=4).squeeze(-1)    # (nc3+1, nc2, nc1)
 
     z_surf = F(cell_X3, X2f)    # (nc3, nc2+1, 1, res+1, 1)
-    h_x3x1 = torch.clamp(z1 - z_surf, min=0, max=dz)
+    h_x3x1 = torch.clamp(z1 - z_surf, min=torch.zeros_like(dz), max=dz)
     face_area_x3x1 = torch.trapz(h_x3x1, x=cell_X3.expand_as(h_x3x1), dim=3).squeeze(-1)    # (nc3, nc2+1, nc1)
     
     z_surf = F(cell_X3, cell_X2)        # (nc3, nc2, 1, res+1, res+1)
@@ -56,7 +56,7 @@ def cell_properties(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coo
     cell_X2_sqz = cell_X2.squeeze(3).expand_as(int_x3)  # collapse over integrated dimension
     face_area_x3x2 = torch.trapz(int_x3, x=cell_X2_sqz, dim=3)              # (nc3, nc2, nc1+1)
 
-    h_vol = torch.clamp(z1 - z_surf, min=0, max=dz)
+    h_vol = torch.clamp(z1 - z_surf, min=torch.zeros_like(dz), max=dz)
     int_x3 = torch.trapz(h_vol, x=cell_X3.expand_as(h_vol), dim=3)          # (nc3, nc2, nc1, res+1)
     cell_X2_sqz = cell_X2.squeeze(3).expand_as(int_x3)
     cell_vol = torch.trapz(int_x3, x=cell_X2_sqz, dim=3)                    # (nc3, nc2, nc1)
