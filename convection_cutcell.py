@@ -60,6 +60,7 @@ def cell_properties(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coo
     int_x3 = torch.trapz(h_vol, x=cell_X3.expand_as(h_vol), dim=3)          # (nc3, nc2, nc1, res+1)
     cell_X2_sqz = cell_X2.squeeze(3).expand_as(int_x3)
     cell_vol = torch.trapz(int_x3, x=cell_X2_sqz, dim=3)                    # (nc3, nc2, nc1)
+    return face_area_x2x1, face_area_x3x1, face_area_x3x2, cell_vol
 
 
 def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Optional[str] = None, mars_data: Optional[torch.Tensor] = None):
@@ -91,6 +92,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     Rd = kintera.constants.Rgas / kintera.species_weights()[0]
     cv = kintera.species_cref_R()[0] * Rd
     cp = cv + Rd
+    face_area_x2x1, face_area_x3x1, face_area_x3x2, cell_vol = cell_properties(func, coord, device, 4)
 
     block_vars = {}
     # define solid region, pad with ghost zones
