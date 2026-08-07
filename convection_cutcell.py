@@ -33,8 +33,8 @@ def cell_properties(F: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], coo
     X2f = x2f[None, :, None, None, None]
     X1f = x1f[None, None, :, None, None]
 
-    x3pts = torch.linspace(0, 1, res + 1)
-    x2pts = torch.linspace(0, 1, res + 1)
+    x3pts = torch.linspace(0, 1, res + 1).to(device)
+    x2pts = torch.linspace(0, 1, res + 1).to(device)
 
     cell_X3 = X3f[:-1, :, :, ...] + x3pts[None, None, None, :, None] * (X3f[1:, :, :, ...] - X3f[:-1, :, :, ...])   # (nc3, 1, 1, res+1, 1)
     cell_X2 = X2f[:, :-1, :, ...] + x2pts[None, None, None, None, :] * (X2f[:, 1:, :, ...] - X2f[:, :-1, :, ...])   # (1, nc2, 1, 1, res+1)
