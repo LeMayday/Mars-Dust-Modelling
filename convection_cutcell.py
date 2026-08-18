@@ -94,6 +94,10 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     cv = kintera.species_cref_R()[0] * Rd
     cp = cv + Rd
     face_area_x2x1, face_area_x3x1, face_area_x3x2, cell_vol = cell_properties(func, coord, device, 4)
+    coord.buffer("cfa3")[:] = pad_tensor(face_area_x2x1, nghost, threeD=False)
+    coord.buffer("cfa2")[:] = pad_tensor(face_area_x3x1, nghost, threeD=False)
+    coord.buffer("cfa1")[:] = pad_tensor(face_area_x3x2, nghost, threeD=False)
+    coord.buffer("cvol")[:] = pad_tensor(cell_vol, nghost, threeD=False)
 
     block_vars = {}
     # define solid region, pad with ghost zones
