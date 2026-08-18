@@ -88,6 +88,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
     nc2 = coord.buffer("x2v").shape[0]
     nc1 = coord.buffer("x1v").shape[0]
     nvar = eos.nvar()
+    nghost = block.options.coord().nghost()
 
     Rd = kintera.constants.Rgas / kintera.species_weights()[0]
     cv = kintera.species_cref_R()[0] * Rd
@@ -103,7 +104,7 @@ def run_with(input_file: str, output_dir: Optional[str] = None, restart_file: Op
         solid_tensor = assign_solid_tensor(mars_data.to(device), x1f.to(device))
         solid_tensor = solid_tensor.to(device)
         # need to pad tensor here, tensor must be boolean
-        block_vars["solid"] = pad_tensor(solid_tensor.char(), coord.options.nghost()).bool()
+        block_vars["solid"] = pad_tensor(solid_tensor.char(), nghost).bool()
     else:
         # no topography
         solid_tensor = torch.zeros_like(x1v[interior_geom]).to(device)
